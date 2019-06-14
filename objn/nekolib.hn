@@ -1,0 +1,72 @@
+@interface NL_UTF8 : ON_Object
+	+ buf_alloc:size
+	+ buf_add:buf char:char
+	+ buf_content:buf
+	+ buf_length:buf
+	+ buf_size:buf
+	+ validate:str
+	+ length:str
+	+ sub:str pos:pos len:len
+	+ get:str index:index
+	+ iter:str with:func
+	+ compare:str1 with:str2
+@end
+
+@interface NL_unicode : ON_Object
+	+ lower:str enc:enc
+	+ upper:str enc:enc
+@end
+
+@interface NL_sys : ON_Object
+	+ get_env:name
+	+ set_env:name to:value
+	
+	+ get_cwd
+	+ set_cwd:cwd
+	
+	+ command:cmd
+	
+	+ env
+	
+	+ getch:echo
+@end
+
+@interface NL_file : ON_Object
+	+ full_path:path
+	+ contents:filename
+	
+	+ read_char:file_obj
+	
+	+ stdin
+@end
+
+@interface NL_process : ON_Object
+	+ run:cmd args:args
+	
+	+ stdout_read:proc buf:str pos:pos len:len
+	+ stderr_read:proc buf:str pos:pos len:len
+	
+	+ stdin_write:proc buf:str pos:pos len:len
+	+ stdin_close:proc
+	
+	+ exit:proc
+	+ pid:proc
+	+ close:proc
+@end
+
+@interface NL_regexp : ON_Object
+	@property rx (read)
+	
+	+ new:rx
+	+ new:rx options:options
+	
+	- init:rx
+	- init:rx options:options
+	
+	- match:str pos:pos len:len
+	- replace:str1 with:str2
+	- replace_all:str1 with:str2
+	- replace_fun:str with:func
+	- matched:n
+	- matched_pos:n
+@end

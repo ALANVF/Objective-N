@@ -1,0 +1,386 @@
+//@interface ON_Invocation : ON_Object
+//
+//@end
+
+@interface ON_Nil : ON_Object
+	- ON_String
+	
+	- __bool
+	- __string
+@end
+
+@interface ON_Integer : ON_Object
+	@property raw (read) = 0;
+	
+	+ integerWithNekoInteger:int
+	
+	- init
+	- initWithValue:value
+	
+	- compare:value
+	
+	- ON_Integer
+	- ON_Float
+	- ON_String
+	
+	- __add:rval
+	- __radd:lval
+	// ...
+	
+	- __bool
+	- __string
+@end
+
+@interface ON_Float : ON_Object
+	@property raw (read) = 0.0;
+	
+	+ floatWithNekoFloat:float
+	
+	- init
+	- initWithValue:value
+	
+	- compare:value
+	
+	- ON_Integer
+	- ON_Float
+	- ON_String
+	
+	- __add:rval
+	- __radd:lval
+	// ...
+	
+	- __bool
+	- __string
+@end
+
+@interface ON_String : ON_Object
+	@property raw (read) = "";
+	
+	+ string
+	+ stringWithLength:length
+	+ stringWithNekoString:value
+	+ stringWithString:str
+	
+	- init
+	- initWithLength:length
+	- initWithNekoString:value
+	//- initWithContentsOfFile:path
+	//- initWithFormat:str arguments:args
+	- initWithString:str
+	
+	- length
+	- characterAtIndex:index
+	- getCharactersInRange:range
+	
+	- stringByAppendingString:str
+	- stringByAppendingString:str withFormat:args
+	- stringByPaddingToLength:len withString:str startingAtIndex:index
+	
+	- componentsSeparatedByString:str
+	- componentsSeparatedByCharactersInSet:set
+	
+	- stringByTrimmingCharactersInSet:set
+	- substringFromIndex:index
+	- substringWithRange:range
+	- substringToIndex:index
+	- containsString:str
+	- containsString:str range:range
+	//- positionOfCharacterFromSet:set options:options range:range //options is a combo of "i" (case insensitive), "l" (literal), and "b" (backwards)
+	// no range nor ops
+	// no range
+	// no ops
+	- rangeOfString:str
+	- rangeOfString:str range:range
+	
+	- stringByReplacingOccurrencesOfString:str withString:rep options:options range:range
+	- stringByReplacingCharactersInRange:range withString:rep
+	
+	- compare:str
+	- compare:str caseInsensitive:ci
+	- hasPrefix:str
+	- hasSuffix:str
+	- hash
+	- isEqualToString:str
+	//- writeToFile:path
+	
+	- commonPrefixWithString:str
+	- commonPrefixWithString:str caseInsensitive:ci
+	- capitalizedString
+	- lowercaseString
+	- uppercaseString
+	
+	- ON_Integer
+	- ON_Float
+	- ON_String
+	
+	- __add:rval
+	- __radd:lval
+	// ...
+	
+	- __bool
+	- __string
+@end
+
+@interface ON_MutableString : ON_String
+	+ string
+	+ stringWithLength:length
+	+ stringWithNekoString:value
+	+ stringWithString:str
+	
+	- initWithString:str
+	
+	- appendString:str
+	- deleteCharactersInRange:range
+	- insertString:str atIndex:index
+	- replaceCharactersInRange:range withString:rep
+	- replaceOccurrencesOfString:str withString:rep options:options range:range
+	- setString:str
+	
+	- ON_String
+@end
+
+@interface ON_CharacterSet : ON_Object
+	@property codes
+	
+	+ alphanumericCharacterSet
+	+ capitalizedLetterCharacterSet
+	+ controlCharacterSet
+	+ decimalDigitCharacterSet
+	+ decomposableCharacterSet
+	+ illegalCharacterSet
+	+ letterCharacterSet
+	+ lowercaseLetterCharacterSet
+	+ newlineCharacterSet
+	+ nonBaseCharacterSet
+	+ punctuationCharacterSet
+	+ symbolCharacterSet
+	+ uppercaseLetterCharacterSet
+	+ whitespaceAndNewlineCharacterSet
+	+ whitespaceCharacterSet
+	
+	+ characterSetWithCharactersInString:str
+	+ characterSetWithRange:range
+	- _initWithCodepoints:codes
+	//+ invertedSet
+	
+	- characterIsMember:char
+	- isSupersetOfSet:set
+@end
+
+@interface ON_MutableCharacterSet : ON_CharacterSet
+	- addCharactersInRange:range
+	- addCharactersInString:str
+	
+	- removeCharactersInRange:range
+	- removeCharactersInString:str
+	
+	- formIntersectionWithCharacterSet:set
+	- formUnionWithCharacterSet:set
+@end
+
+@interface ON_Array : ON_Object
+	@property raw (read) = $array();
+	@property count (read) = 0;
+	
+	+ array
+	+ arrayWithValue:value
+	+ arrayWithValues:values
+	+ arrayWithArray:array copyItems:copy
+	
+	- init
+	- initWithValue:value
+	- initWithValues:values
+	- initWithArray:array copyItems:copy
+	
+	- arrayByAddingValue:value
+	- arrayByAddingValuesFromArray:array
+	- arrayWithFunction:func
+	
+	- containsValue:value
+	- firstValue
+	- lastValue
+	
+	- valueAtIndex:index
+	- setValue:value atIndex:index
+	- valuesAtIndexes:indexes
+	- setValues:values atIndexes:indexes
+	//- valuesInRange:range
+	
+	- exchangeValueAtIndex:index1 withValueAtIndex:index2 //maybe move back to ON_MutableArray
+	
+	- valueEnumerator
+	- reverseValueEnumerator
+	
+	- indexOfValue:value
+	- indexOfValue:value inRange:range
+	- indexOfValueIdenticalTo:value
+	- indexOfValueIdenticalTo:value inRange:range
+	- indexOfObjectPassingTest:test //^(element, index, *stop)
+	
+	- isEqualToArray:array
+	- firstValueCommonWithArray:array
+	- makeValuesPerform:func
+	//- sortUsingFunction:func //^(el1, el2)
+	- componentsJoinedByString:sep
+	
+	- subarrayWithRange:range
+	
+	//- ON_Array
+	//- ON_Enumerator
+	- ON_String
+	
+	- __get:index
+	- __get:index __set:value
+	- __bool
+	- __string
+@end
+
+@interface ON_MutableArray : ON_Array
+	//+ arrayWithLength:length
+	
+	//- initWithLength:length
+	
+	- addValue:value
+	- addValuesFromArray:array
+	- insertValue:value atIndex:index
+	- insertValues:values atIndexes:indexes
+	
+	- removeAllValues
+	- removeLastValue
+	- removeValue:value
+	- removeValue:value inRange:range
+	- removeValueAtIndex:index
+	- removeValuesAtIndexes:indexes
+	//- removeValueIdenticalTo:value
+	//- removeValueIdenticalTo:value inRange:range
+	- removeValuesInArray:array
+	- removeValuesInRange:range
+	
+	- replaceValuesInRange:range1 withValuesFromArray:array range:range2
+	- replaceValuesInRange:range withValuesFromArray:array
+	
+	- setArray:array
+	
+	- sortUsingFunction:func //^(el1, el2)
+	
+	- ON_Array
+@end
+
+@interface ON_Dictionary : ON_Object
+	@property raw = $new(null);
+	@property count (read) = 0;
+	
+	+ dictionary
+	+ dictionaryWithDictionary:dict
+	+ dictionaryWithDictionary:dict copyItems:copy
+	+ dictionaryWithValue:value forKey:key
+	+ dictionaryWithValues:values forKeys:keys
+	+ dictionaryWithValuesAndKeys:args
+	+ dictionaryWithNekoObject:obj
+	+ dictionaryWithNekoObject:obj copyItems:copy
+	
+	- initWithDictionary:dict
+	- initWithDictionary:dict copyItems:copy
+	- initWithValue:value forKey:key
+	- initWithValues:values forKeys:keys
+	- initWithValuesAndKeys:args
+	- initWithNekoObject:obj
+	- initWithNekoObject:obj copyItems:copy
+	
+	- allKeys
+	- allKeysForValue:value
+	- allValues
+	
+	- keyEnumerator
+	- valueEnumerator
+	- enumerateKeysAndValuesUsingBlock:block
+	
+	- keysOfEntriesPassingTest:func //^(key, value)
+	
+	- valueForKey:key
+	- setValue:value forKey:key
+	- hasKey:key
+	
+	- isEqualToDictionary:dict
+	
+	- ON_String
+	
+	- __get:key
+	- __get:key __set:value
+	- __bool
+	- __string
+@end
+
+@interface ON_MutableDictionary : ON_Dictionary
+	//+ dictionaryWithLength:length
+	
+	//- initWithLength:length
+	
+	- addEntriesFromDictionary:dict
+	- removeAllValues
+	- removeValueForKey:key
+	- removeValuesForKeys:keys
+	- setValue:value forKey:key
+	- setDictionary:dict
+	
+	- ON_Dictionary
+@end
+
+@interface ON_MapTable : ON_Object
+	@property raw
+	
+	- initWithCapacity:size
+	- initWithKeys:keys
+	- initWithKeys:keys andValues:values
+	
+	- count
+	- dictionaryRepresentation
+	
+	- allKeys
+	- allValues
+	
+	- keyEnumerator
+	- valueEnumerator
+	
+	- valueForKey:key
+	- removeAllValues
+	- removeValueForKey:key
+	- setValue:value forKey:key
+	
+	//- isEqualToMapTable:table
+	
+	//- ON_String
+	//- ON_Enumerator
+	
+	//- __string
+@end
+
+@interface ON_Range : ON_Object
+	@property position (read) = 0;
+	@property length (read) = 0;
+	
+	- init
+	- initAtPosition:pos withLength:len
+	
+	- containsLocation:value
+	- equalsRange:range
+	- max
+	
+	- unionRange:range
+	- intersectionRange:range
+	
+	- ON_String
+	//- ON_Enumerator
+	- ON_Array
+	
+	- __bool
+	- __string
+@end
+
+@interface ON_Enumerator : ON_Object
+	@property allValues (read)
+	
+	- initWithValues:array
+	
+	- nextValue
+@end

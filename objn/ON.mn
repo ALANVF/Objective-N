@@ -1,0 +1,964 @@
+#import "../objn/nekolib.mn"
+#import "../objn/ON.hn"
+
+@implementation ON_Nil
+	- ON_String {return @"nil"}
+	
+	- __bool {
+		return false
+	}
+	- __string {
+		return "nil"
+	}
+@end
+
+@implementation ON_Integer
+	+ integerWithNekoInteger:int {
+		return [[this make] initWithValue:int]
+	}
+	
+	- init { //todo: remove default constructors since i added default values
+		return this
+	}
+	- initWithValue:value {
+		if $typeof(value) == $tint
+			this->raw = value
+		else if $typeof(value) == $tobject
+			if [value class] == ON_Integer
+				this->raw = [value raw]
+		
+		return this
+	}
+	
+	- compare:value {
+		if $typeof(value) == $tobject
+			return $compare(this->raw, [value raw])
+		else
+			return $compare(this->raw, value)
+	}
+	
+	- ON_Integer {
+		return this
+	}
+	- ON_Float {
+		return [[ON_Float make] initWithValue: $float(this->raw)]
+	}
+	- ON_String {
+		return [[ON_String make] initWithNekoString: $string(this->raw)]
+	}
+	
+	- __bool {
+		return $istrue(this->raw)
+	}
+	- __string {
+		return $string(this->raw)
+	}
+@end
+
+@implementation ON_Float
+	+ floatWithNekoFloat:float {
+		return [[this make] initWithValue:float]
+	}
+	
+	- init {
+		return this
+	}
+	- initWithValue:value {
+		if $typeof(value) == $tfloat
+			this->raw = value
+		else if $typeof(value) == $tobject
+			if [value class] == ON_Float
+				this->raw = [value raw]
+		
+		return this
+	}
+	
+	- compare:value {
+		if $typeof(value) == $tobject
+			return $compare(this->raw, [value raw])
+		else
+			return $compare(this->raw, value)
+	}
+	
+	- ON_Integer {
+		return [[ON_Integer make] initWithValue: $int(this->raw)]
+	}
+	- ON_Float {
+		return this
+	}
+	- ON_String {
+		return [[ON_String make] initWithNekoString: $string(this->raw)]
+	}
+	
+	- __bool {
+		return $istrue(this->raw)
+	}
+	- __string {
+		return $string(this->raw)
+	}
+@end
+
+@implementation ON_String
+	+ string {
+		return [[this make] init]
+	}
+	+ stringWithLength:length {
+		return [[this make] initWithLength:length]
+	}
+	+ stringWithNekoString:value {
+		return [[this make] initWithNekoString:value]
+	}
+	+ stringWithString:str {
+		return [[this make] initWithString:str]
+	}
+	
+	- init {
+		return this
+	}
+	- initWithLength:length {
+		this->raw = $smake(length)
+		
+		return this
+	}
+	- initWithNekoString:value {
+		if $typeof(value) == $tstring
+			this->raw = value
+		
+		return this
+	}
+	- initWithString:str {
+		if $typeof(str) == $tobject
+			if [str class] == ON_String
+				this->raw = $scopy([str raw])
+		
+		return this
+	}
+	
+	- length {
+		return [NL_UTF8 length:this->raw]
+	}
+	- characterAtIndex:index {
+		if index < [NL_UTF8 length:this->raw]
+			return [NL_UTF8 sub:this->raw
+							pos:index
+							len:1]
+	}
+	- getCharactersInRange:range {
+		if [range position] >= 0 && [range max] < [NL_UTF8 length:this->raw]
+			return [NL_UTF8 sub:this->raw
+							pos:[range position]
+							len:[range length]]
+	}
+	
+	- stringByAppendingString:str {
+		return [ON_String stringWithNekoString: this->raw + [str raw]]
+	}
+	- stringByPaddingToLength:len withString:str startingAtIndex:index {
+		// todo. seems kinda weird
+	}
+	
+	- componentsSeparatedByString:str {
+		if $typeof(str) == $tobject
+			str = [str raw]
+		
+		var l = $loader.loadprim("std@string_split", 2)(this->raw, str)
+		
+		if l == null
+			return @[[this copy]]
+		else if l[1] == null
+			return @[@(l[0])]
+		else if l[1][1] == null
+			return @[
+				[ON_String stringWithNekoString:l[0]],
+				[ON_String stringWithNekoString:l[1][0]]
+			]
+		else {
+			var dig = $array(null)
+			dig[0] = ^(arr, length) {
+				if arr[1] == null
+					return length + 1
+				else
+					return dig[0](arr[1], length + 1)
+			}
+			
+			var out = $amake(dig[0](l, 1))
+			
+			for(var i = 0; l != null; i += 1) {
+				out[i] = @(l[0])
+				l = l[1]
+			}
+			
+			if out[$asize(out)-1] == null
+			out = $asub(out, 0, $asize(out)-1)
+			
+			return @(out)
+		}
+	}
+	//- componentsSeparatedByCharactersInSet:set
+	
+	//- stringByTrimmingCharactersInSet:set
+	- substringFromIndex:index {
+		switch index {
+			case 0:
+				return [this copy]
+			
+			case [NL_UTF8 length:this->raw]:
+				return @""
+			
+			default:
+				return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
+																pos:index
+																len:[NL_UTF8 length:this->raw]-index]]
+		}
+	}
+	- substringWithRange:range {
+		if [range length] == 0
+			return @""
+		else if [range position] == 0 && [range length] == [this length]
+			return [this copy]
+		else {
+			return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
+															pos:[range position]
+															len:[range length]]]
+		}
+	}
+	- substringToIndex:index {
+		switch index {
+			case 0:
+				return @""
+			
+			case [NL_UTF8 length:this->raw]:
+				return [this copy]
+			
+			default:
+				return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
+																pos:0
+																len:index]]
+		}
+	}
+	
+	- containsString:str {
+		if $sfind(this->raw, 0, [str raw]) == null
+			return false
+		else
+			return true
+	}
+	- containsString:str range:range {
+		var p = $sfind(this->raw, 0, [str raw])
+		if p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
+			return false
+		else
+			return true
+	}
+	
+	- rangeOfString:str {
+		var p = $sfind(this->raw, 0, [str raw])
+		if p == null
+			return ON_MakeRange(-1, 0)
+		else
+			return ON_MakeRange(p, [str length])
+	}
+	- rangeOfString:str range:range {
+		var p = $sfind(this->raw, 0, [str raw])
+		if p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
+			return ON_MakeRange(-1, 0)
+		else
+			return ON_MakeRange(p, [str length])
+	}
+	
+	//todo: add range options
+	- compare:str {
+		return [NL_UTF8 compare:this->raw
+						   with:[str raw]]
+	}
+	- compare:str caseInsensitive:ci {
+		if ci
+			return [this compare:str]
+		else
+			return [[this lowercaseString] compare:[str lowercaseString]]
+	}
+	
+	- hasPrefix:str {
+		if [str length] > [this length]
+			return false
+		
+		if [str isEqualToString:@([NL_UTF8 sub:this->raw pos:0 len:[str length]])]
+			return true
+		else
+			return false
+	}
+	- hasSuffix:str {
+		if [str length] > [this length]
+			return false
+		
+		if [str isEqualToString:@([NL_UTF8 sub:this->raw pos:[this length]-[str length] len:[str length]])]
+			return true
+		else
+			return false
+	}
+	- hash {
+		return $hash(this->raw)
+	}
+	- isEqualToString:str {
+		if [NL_UTF8 compare:this->raw with:[str raw]] == 0
+			return true
+		else
+			return false
+	}
+	
+	- commonPrefixWithString:str {
+		return [this commonPrefixWithString:str caseInsensitive:false]
+	}
+	- commonPrefixWithString:str caseInsensitive:ci {
+		if this->raw == "" || [str raw] == "" {
+			return @""
+		} else if [this length] == 1 || [str length] == 1 {
+			if [[this substringToIndex:1] compare:[str substringToIndex:1] caseInsensitive:ci] == 0
+				return [this substringToIndex:1]
+			else
+				return @""
+		} else {
+			var out = 0
+			var len = if [this length] <= [str length] [this length] else [str length],
+				_this = [this raw],
+				_str = [str raw]
+			
+			if ci {
+				_this = [[this lowercaseString] raw]
+				_str = [[str lowercaseString] raw]
+			}
+			
+			for(var c = 0; c < len; c += 1) {
+				if [NL_UTF8 get:_this index:c] == [NL_UTF8 get:_str index:c]
+					out += 1
+				else
+					break
+			}
+			
+			return [this substringToIndex:out]
+		}
+	}
+	- capitalizedString {
+		return [ON_String stringWithNekoString:[NL_unicode upper:[this characterAtIndex:0] enc:2] + [[this substringFromIndex:1] raw]]
+	}
+	- lowercaseString {
+		return [ON_String stringWithNekoString:[NL_unicode lower:this->raw
+															 enc:1]]
+	}
+	- uppercaseString {
+		return [ON_String stringWithNekoString:[NL_unicode upper:this->raw
+															 enc:1]]
+	}
+	
+	- ON_Integer {
+		return [[ON_Integer make] initWithValue: $int(this->raw)]
+	}
+	- ON_Float {
+		return [[ON_Float make] initWithValue: $float(this->raw)]
+	}
+	- ON_String {
+		return this
+	}
+	
+	- __bool {
+		return $istrue(this->raw)
+	}
+	- __string {
+		return this->raw
+	}
+@end
+
+@implementation ON_MutableString
+	+ string {
+		return [[ON_MutableString make] init]
+	}
+	+ stringWithLength:length {
+		return [[ON_MutableString make] initWithLength:length]
+	}
+	+ stringWithNekoString:value {
+		return [[ON_MutableString make] initWithNekoString:value]
+	}
+	+ stringWithString:str {
+		return [[ON_MutableString make] initWithString:str]
+	}
+	
+	- initWithString:str {
+		if $typeof(str) == $tobject
+			if [str class] == ON_String || [str class] == ON_MutableString
+				this->raw = $scopy([str raw])
+		
+		return this
+	}
+	
+	- appendString:str {
+		this->raw += [str raw]
+	}
+	- deleteCharactersInRange:range {
+		if [range length] != 0 && [range position] >= 0 && [range length] <= [this length] {
+			if [range position] == 0 && [range length] == [this length] {
+				this->raw = ""
+			} else {
+				var l = [NL_UTF8 sub:this->raw
+								 pos:0
+								 len:[range position]],
+					r = [NL_UTF8 sub:this->raw
+								 pos:[range max]
+								 len:[this length]-[range max]]
+				this->raw = l + r
+			}
+		}
+	}
+	- insertString:str atIndex:index {
+		if index > [this length]
+			$throw("some out-of-bounds error")
+		else if index == [this length]
+			this->raw += [str raw]
+		else if index == 0
+			this->raw = [str raw] + this->raw
+		else
+			this->raw = [NL_UTF8 sub:this->raw pos:0 len:index] + [str raw] + [NL_UTF8 sub:this->raw pos:index len:[this length]-index]
+	}
+	- replaceCharactersInRange:range withString:rep {
+		[this deleteCharactersInRange:range]
+		[this insertString:rep
+				   atIndex:[range position]]
+	}
+	//- replaceOccurrencesOfString:str withString:rep options:options range:range
+	- setString:str {
+		this->raw = $scopy([str raw])
+	}
+	
+	- ON_String {
+		return [ON_String stringWithNekoString:this->raw]
+	}
+@end
+
+{
+//lower_letter = $array(),
+//upper_letter = $array(),
+//letter = $aconcat($array(lower_letter, upper_letter)),
+//punct = $array(),
+var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i=0;i<27;i+=1)_[i+27]=i+97;_},
+	number = $array(48, 49, 50, 51, 52, 53, 54, 55, 56, 57),
+	alnum = $aconcat($array(alpha, number)),
+	control = {var _=$amake(33);for(var i=0;i<33;i+=1)_[i]=i;_},
+	newline = $array(10, 11, 12, 13),
+	white = $array(9, 32),
+	white_and_newline = $aconcat($array(white, newline)),
+	symbol = $array(33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 58, 59, 60, 61, 62, 63, 64, 91, 92, 93, 94, 95, 96, 123, 124, 125, 126)
+
+@implementation ON_CharacterSet
+	/// maybe add alphaCharacterSet
+	+ alphanumericCharacterSet {
+		return [[this make] _initWithCodepoints:alnum]
+	}
+	//+ capitalizedLetterCharacterSet
+	+ controlCharacterSet {
+		return [[this make] _initWithCodepoints:control]
+	}
+	+ decimalDigitCharacterSet {
+		return [[this make] _initWithCodepoints:number]
+	}
+	//+ decomposableCharacterSet
+	//+ illegalCharacterSet
+	//+ letterCharacterSet
+	//+ lowercaseLetterCharacterSet
+	+ newlineCharacterSet {
+		return [[this make] _initWithCodepoints:newline]
+	}
+	//+ nonBaseCharacterSet
+	//+ punctuationCharacterSet
+	+ symbolCharacterSet {
+		return [[this make] _initWithCodepoints:symbol]
+	}
+	//+ uppercaseLetterCharacterSet
+	+ whitespaceAndNewlineCharacterSet {
+		return [[this make] _initWithCodepoints:white_and_newline]
+	}
+	+ whitespaceCharacterSet {
+		return [[this make] _initWithCodepoints:white]
+	}
+	
+	// the way ranges work in objc is weird, so idk if all of this will be accurate.
+	+ characterSetWithCharactersInString:str {
+		var _ = [this make], a = $amake([str length])
+		for(var i = 0; i < [str length]; i += 1)
+			a[i] = [NL_UTF8 get:[str raw] index:i]
+		
+		$objget(_, $hash("@instance_vars")).codes = a
+		return _
+	}
+	+ characterSetWithRange:range {
+		var _ = [this make]
+		$objget(_, $hash("@instance_vars")).codes = {var a=$amake([range length]+1);for(var i=0;i<=[range length];i+=1)a[i]=[range position]+i;a}
+		return _
+	}
+	
+	- _initWithCodepoints:codes {
+		this->codes = codes
+		
+		return this
+	}
+	
+	//+ invertedSet
+	
+	- characterIsMember:char {
+		for(var i = 0; i < $asize(this->codes); i += 1)
+			if this->codes[i] == char
+				return true
+		
+		return false
+	}
+	- isSupersetOfSet:set {
+		var codes = $objget(set, $hash("@instance_vars")).codes
+		for(var i = 0; i < $asize(codes); i += 1) {
+			var b = false
+			for(var j = 0; j < $asize(this->codes); j += 1)
+				if this->codes == codes[i] {
+					b = true
+					break
+				}
+			
+			if !b
+				return false
+		}
+	}
+@end
+}
+
+@implementation ON_Array
+	+ array {
+		return [this new]
+	}
+	+ arrayWithValue:value {
+		return [[this make] initWithValue:value]
+	}
+	+ arrayWithValues:values {
+		return [[this make] initWithValues:values]
+	}
+	+ arrayWithArray:array copyItems:copy {
+		return [[this make] initWithArray:array
+								copyItems:copy]
+	}
+	
+	- init {
+		//this->raw = $array()
+		//this->count = 0
+		
+		return this
+	}
+	- initWithValue:value {
+		this->raw = $array(value)
+		this->count = 1
+		
+		return this
+	}
+	- initWithValues:values {
+		// I'm too lazy to add type constraints rn
+		this->raw = values
+		this->count = $asize(values)
+		
+		return this
+	}
+	- initWithArray:array copyItems:copy {
+		this->raw = if copy $acopy([array raw]) else [array raw]
+		this->count = [array count]
+		
+		return this
+	}
+	
+	- arrayByAddingValue:value {
+		return [ON_Array arrayWithNekoArray:$aconcat($array(this->raw, $array(value)))]
+	}
+	- arrayByAddingValuesFromArray:array {
+		return [ON_Array arrayWithNekoArray:$aconcat($array(this->raw, [array raw]))]
+	}
+	- arrayWithFunction:func {objn_Typecheck($tfunction, func, false)
+		var out = [ON_Array arrayWithArray:this
+								 copyItems:true]
+		switch $nargs(func) {
+			case 1: for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i])
+			case 2: for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i], i)
+			default: $throw("invalid number arguments for mapping an array!")
+		}
+		
+		return out
+	}
+	
+	- containsValue:value {
+		for(var i = 0; i < this->count; i += 1)
+			if this->raw[i] == value
+				return true
+		return false
+	}
+	- firstValue {
+		return this->raw[0]
+	}
+	- lastValue {
+		return this->raw[this->count - 1]
+	}
+	- valueAtIndex:index {
+		return this->raw[index]
+	}
+	- setValue:value atIndex:index {
+		this->raw[index] = value
+	}
+	- valuesAtIndexes:indexes {
+		var out = $acopy([indexes raw])
+		
+		for(var i = 0; i < $asize(out); i += 1)
+			out[i] = this->raw[indexes[i]]
+		
+		return @(out)
+	}
+	- setValues:values atIndexes:indexes {
+		// make sure [values count] == [indexes count]...
+		
+		for(var i = 0; i < [indexes count]; i += 1)
+			this->raw[indexes[i]] = values[i]
+	}
+	
+	- valueEnumerator {return [[ON_Enumerator make] initWithValues:$acopy(this->raw)]}
+	- reverseValueEnumerator {
+		this->count<2 && {return [[ON_Enumerator make] initWithValues:$acopy(this->raw)]}
+		var out = $amake(this->count)
+		for(var i = 0; i < $asize(out); i += 1)
+			out[$asize(out)-i-1] = this->raw[i]
+		return [[ON_Enumerator make] initWithValues:out]
+	}
+	
+	- isEqualToArray:array {
+		this->count != [array count] && {return false}
+		this->raw == [array raw] && {return true}
+		
+		for(var i = 0; i < this->count; i += 1)
+			if this->raw[i] == array[i]
+				continue
+			else
+				return false
+		
+		return true
+	}
+	- firstValueCommonWithArray:array {
+		(!this->count || ![array count]) && {return nil}
+		var a, al
+		if(this->count<=[array count]) {a = this->raw; al = [array raw]} else {a = [array raw]; al = this->raw}
+		for(var i = 0; i < $asize(al); i += 1)
+			for(var j = 0; j < $asize(a); j += 1)
+				if al[i] == a[j]
+					return al[i]
+		
+		return nil
+	}
+	- makeValuesPerform:func {objn_Typecheck($tfunction, func, false)
+		switch $nargs(func) {
+			case 1: for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i])
+			case 2: for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i], i)
+			default: $throw("invalid number arguments for mapping an array!")
+		}
+	}
+	- componentsJoinedByString:sep {objn_Typecheck($array($tstring, ON_String), sep, false)
+		this->count || {return @""}
+		this->count==1 && {return @($string(this->raw[0]))}
+		sep = $string(sep)
+		var out = $string(this->raw[0])
+		for(var i = 1; i < this->count; i += 1) out += sep + $string(this->raw[i])
+		return @(out)
+	}
+	
+	- subarrayWithRange:range {objn_Typecheck(ON_Range, range, false)
+		//([range position]>this->count||[range max]>this->count) || $throw("Range "+range+" out of bounds!")
+		[range length] || {return @[]}
+		[range length]==1 && {return @[this->raw[[range max]-1]]}
+		
+		return @($acopy($asub(this->raw, [range position], [range length])))
+	}
+	
+	- ON_String {
+		return [ON_String stringWithNekoString:$string(this->raw)]
+	}
+	
+	- __get:index {return [this valueAtIndex:index]}
+	- __get:index __set:value {[this setValue:value atIndex:index]}
+	- __bool {
+		return $istrue(this->count)
+	}
+	- __string {
+		return [[this ON_String] raw]
+	}
+@end
+
+@implementation ON_MutableArray
+	- addValue:value {
+		this->raw = $aconcat($array(this->raw, $array(value)))
+		this->count += 1
+	}
+	- addValuesFromArray:array {objn_Typecheck(ON_Array,array,false)
+		this->raw = $aconcat($array(this->raw, $acopy([array raw])))
+		this->count += [array count]
+	}
+	- insertValue:value atIndex:index {objn_Typecheck($tint,index,false)
+		if index < 0 || index > this->count
+			$throw("out of bounds!")
+		
+		switch index {
+			case 0: this->raw = $aconcat($array($array(value), this->raw))
+			case this->count: this->raw = $aconcat($array(this->raw, $array(value)))
+			default: {
+				var head = $asub([this raw], 0, index),
+					tail = $asub([this raw], index+1, $asize(this->raw)-index+1)
+				
+				this->raw = $aconcat($array(head, $array(value), tail))
+			}
+		}
+		
+		this->count += 1
+	}
+	//- insertValues:values atIndexes:indexes
+	- ON_Array {return [ON_Array arrayWithArray:this copyItems:false]}
+@end
+
+@implementation ON_Dictionary
+	+ dictionary {[this new]}
+	+ dictionaryWithDictionary:dict {[[this make] initWithDictionary:dict]}
+	+ dictionaryWithDictionary:dict copyItems:copy {[[this make] initWithDictionary:dict copyItems:copy]}
+	+ dictionaryWithValue:value forKey:key {[[this make] initWithValue:value forKey:key]}
+	+ dictionaryWithValues:values forKeys:keys {[[this make] initWithValues:values forKeys:keys]}
+	+ dictionaryWithValuesAndKeys:args {[[this make] initWithValuesAndKeys:args]}
+	+ dictionaryWithNekoObject:obj {[[this make] initWithNekoObject:obj]}
+	+ dictionaryWithNekoObject:obj copyItems:copy {[[this make] initWithNekoObject:obj copyItems:copy]}
+	
+	- initWithDictionary:dict {
+		this->raw = $new($objget(dict, $hash("@instance_vars")).raw)
+		this->count = $asize($objfields(this->raw))
+		return this
+	}
+	- initWithDictionary:dict copyItems:copy {
+		if copy
+			[this initWithDictionary:dict]
+		else {
+			this->raw = $objget(dict, $hash("@instance_vars")).raw
+			this->count = $asize($objfields(this->raw))
+		}
+		return this
+	}
+	- initWithValue:value forKey:key {
+		$objset(this->raw, [key hash], value)
+		this->count = 1
+		return this
+	}
+	- initWithValues:values forKeys:keys {
+		if $asize(values) != $asize(keys)
+			$throw("length of keys and values must be equal!")
+		
+		for(var i = 0; i < $asize(keys); i += 1)
+			$objset(this->raw, [keys[i] hash], values[i])
+		
+		this->count = $asize(keys)
+		
+		return this
+	}
+	- initWithValuesAndKeys:args {
+		if $asize(args) % 2 != 0
+			$throw("number of keys and values must be equal!")
+		
+		for(var i = 0; i < $asize(args); i += 2)
+			$objset(this->raw, [args[i+1] hash], args[i])
+		
+		this->count = $asize(args) % 2
+		
+		return this
+	}
+	- initWithNekoObject:obj {[this initWithNekoObject:obj copyItems:false]}
+	- initWithNekoObject:obj copyItems:copy {
+		this->raw = if copy $new(obj) else obj
+		this->count = $asize($objfields(obj))
+		return this
+	}
+	
+	- allKeys {
+		//return [[ON_Array arrayWithValues:$objfields(this->raw)] arrayWithFunction:^(val) {return [ON_String stringWithNekoString:$field(val)]}]
+		return [@($objfields(this->raw)) arrayWithFunction:^(v) {@($field(v))}]
+	}
+	- allKeysForValue:value {
+		var out = @[], f = $objfields(this->raw)
+		for(var i = 0; i < this->count; i += 1)
+			if value == $objget(this->raw, f[i])
+				out = [out arrayByAddingValue:$field(f[i])]
+		
+		return out
+	}
+	- allValues {var _this = this
+		//return [[ON_Array arrayWithValues:$objfields(this->raw)] arrayWithFunction:^(val) {return $objget(this->raw, val)}]
+		return [[this allKeys] arrayWithFunction:^(k) {[_this valueForKey:k]}]
+	}
+	
+	//- keyEnumerator
+	//- valueEnumerator
+	- enumerateKeysAndValuesUsingBlock:block {objn_Typecheck($tfunction, block, false)
+		var f = $objfields(this->raw)
+		switch $asize(f) {
+			case 0: return null
+			case 1: block(@($field(f[0])), $objget(this->raw, f[0]))
+			default: for(var i = 0; i < $asize(f); i += 1) block(@($field(f[i])), $objget(this->raw, f[i]))
+		}
+	}
+	
+	//- keysOfEntriesPassingTest:func //^(key, value)
+	
+	- valueForKey:key {
+		key = $string(key)
+		return $objget(this->raw, $hash(key))
+	}
+	- setValue:value forKey:key {
+		key = $string(key)
+		if !$objfield(this->raw, $hash(key))
+			$throw("Cannot add new keys to an immutable dictionary!")
+		
+		$objset(this->raw, $hash(key), value)
+	}
+	- hasKey:key {
+		return $objfield(this->raw, $hash($string(key)))
+	}
+	
+	- isEqualToDictionary:dict {
+		this->count==[dict count] && {return false}
+		
+		var obj1 = this->raw, obj2 = $objget(dict, $hash("@instance_vars")).raw
+		var obj1f = $objfields(obj1), obj2f = $objfields(obj2)
+		
+		for(var i = 0; i < $asize(obj1f); i += 1) {
+			if obj1f[i] != obj2f[i]
+				return false
+			
+			if $objget(obj1, obj1f[i]) != $objget(obj2, obj2f[i])
+				return false
+		}
+		
+		return true
+	}
+	
+	- ON_String {
+		return switch this->count {
+			case 0: @"@{ }"
+			case 1: @("@{ @\"" + $field($objfields(this->raw)[0]) + "\": " + $objget(this->raw, $objfields(this->raw)[0]) + " }")
+			default: {
+				var out = "@{ ", f = $objfields(this->raw)
+				for(var i = 0; i < $asize(f); i += 1)
+					if i == $asize(f)-1
+						out += "@\"" + $field(f[i]) + "\": " + $objget(this->raw, f[i])
+					else
+						out += "@\"" + $field(f[i]) + "\": " + $objget(this->raw, f[i]) + ", "
+				
+				return @(out + " }")
+			}
+		}
+	}
+	
+	- __get:key {return [this valueForKey:key]}
+	- __get:key __set:value {[this setValue:value forKey:key]}
+	- __bool {$istrue(this->count)}
+	- __string {[[this ON_String] raw]}
+@end
+
+@implementation ON_MutableDictionary
+	- addEntriesFromDictionary:dict {objn_Typecheck(ON_Dictionary,dict,false)
+		var keys = [dict allKeys]
+		for(var i = 0; i < [keys count]; i += 1)
+			this[keys[i]] = dict[keys[i]]
+	}
+	//- removeAllValues
+	//- removeValueForKey:key
+	//- removeValuesForKeys:keys
+	- setValue:value forKey:key {
+		$objset(this->raw, $hash($string(key)), value)
+	}
+	//- setDictionary:dict
+	
+	- ON_Dictionary {[ON_Dictionary dictionaryWithDictionary:this copyItems:false]}
+@end
+
+@implementation ON_Range
+	- init {
+		//this->position = 0
+		//this->length = 0
+		
+		return this
+	}
+	- initAtPosition:pos withLength:len {
+		this->position = pos
+		this->length = len
+		
+		return this
+	}
+	
+	- containsLocation:value {
+		if value >= this->position && value < this->position + this->length
+			return true
+		else
+			return false
+	}
+	- equalsRange:range {
+		if this->position == [range position] && this->length == [range length]
+			return true
+		else
+			return false
+	}
+	- max {
+		return this->position + this->length
+	}
+	
+	- unionRange:range {}
+	- intersectionRange:range {}
+	
+	- __bool {true}
+	- __string {
+		return $string(this->position) + ".." + this->length
+	}
+@end
+
+
+
+function ON_Log(args...) {
+	for(var i = 0; i < $asize(args); i += 1) {
+		switch $typeof(args[i]) {
+			case $tobject: {
+				if $objfield(args[i], $hash("@@send")) {
+					if [args[i] class] == ON_String || [args[i] class] == ON_MutableString
+						$print("\"", [args[i] raw], "\"\n")
+					else if [args[i] respondsToSelector: @selector(ON_String)]
+						$print([args[i] ON_String], "\n")
+					else
+						$print($string(args[i]), "\n")
+				} else {
+					$print(args[i], "\n")
+				}
+			}
+			
+			case $tstring:
+				$print("\"", args[i], "\"\n")
+			
+			default:
+				$print(args[i], "\n")
+		}
+	}
+}
+
+function ON_MakeRange(pos, len) {
+	return [[ON_Range make] initAtPosition:pos withLength:len]
+}
+
+function ON_BoxValue(val) {//todo: make objn bool type
+	return switch $typeof(val) {
+		case $tnull: nil
+		case $tint: [ON_Integer integerWithNekoInteger:val]
+		case $tfloat: [ON_Float floatWithNekoFloat:val]
+		case $tstring: [ON_String stringWithNekoString:val]
+		case $tbool: val
+		case $tarray: [ON_Array arrayWithValues:val]
+		case $tobject: if $objgetproto(val) == $objgetproto(ON_Object) val else [ON_Dictionary dictionaryWithNekoObject:val]
+		case $tfunction: $throw("cannot convert a $tfunction value to an ON value!")
+		case $tabstract: $throw("$tabstract to ON value not implemented yet")
+		default: $throw("error!")
+	}
+}
