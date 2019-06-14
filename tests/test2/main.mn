@@ -1,0 +1,19 @@
+#import "../objn/main.neko"
+#import "../objn/object.neko"
+
+@interface Basic : ON_Object
+	@property a (read, write)
+	
+	- init
+@end
+
+@implementation Basic
+	- init {
+		this->a = 1
+		
+		return this
+	}
+@end
+
+var b = [[Basic make] init]
+$print(b, "\n")

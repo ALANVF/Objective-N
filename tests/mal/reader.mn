@@ -1,0 +1,194 @@
+@interface Reader : ON_Object
+	@property tokens
+	@property position
+	
+	- initWithTokens:toks
+	- init
+	- next
+	- peek
+@end
+
+
+@implementation Reader
+	- initWithTokens:toks {objn_Typecheck(ON_Array,toks,false)
+		this->tokens = toks
+		this->position = 0
+		return this
+	}
+	
+	- init {
+		return [this initWithTokens:@[]]
+	}
+	
+	- next {
+		this->position += 1
+		return this->tokens[this->position - 1]
+	}
+	
+	- peek {
+		if [this->tokens count] > this->position
+			return this->tokens[this->position]
+		else
+			return nil
+	}
+@end
+
+
+function tokenize(str) {objn_Typecheck(ON_String,str,false)
+	var regex = [NL_regexp new:"[\\s,]*(~@|[\\[\\]{}()'`~^@]|\"(?:[\\\\].|[^\\\\\"])*\"?|;.*|[^\\s\\[\\]{}()'\"`@,;]+)"]
+
+	var matches = [ON_MutableArray array],
+		ranges = [ON_MutableArray array]
+	{
+		var f = 0,
+			_str = $scopy([str raw]),
+			_regex = [NL_regexp make]
+		
+		[regex replace_fun:_str
+					  with:^(rx) {
+			$objget(_regex, $hash("@instance_vars")).rx = rx
+			try [matches addValue:@[@([_regex matched:0]), @([_regex matched:1])]] catch _ {}
+			try [ranges addValue:@[[_regex matched_pos:0], [_regex matched_pos:1]]] catch _ {}
+			return ""
+		}]
+	}
+	
+	var tokens = [ON_MutableArray array]
+	
+	for(var i = 0; i < [matches count]; i += 1) {
+		var mstr = [str substringWithRange:ON_MakeRange(ranges[i][1].pos, ranges[i][1].len)]
+		if [mstr characterAtIndex:0] != ";"
+			[tokens addValue:mstr]
+	}
+	
+	return [tokens ON_Array]
+}
+
+function read_atom(rdr) {objn_Typecheck(Reader,rdr,false)
+	var regex = [NL_regexp new:"(^-?[0-9]+$)|(^-?[0-9][0-9.]*$)|(^nil$)|(^true$)|(^false$)|^\"((?:[\\\\].|[^\\\\\"])*)\"$|^\"(.*)$|:(.*)|(^[^\"]*$)"]
+	
+	var token = [rdr next]
+	
+	var matches = [ON_MutableArray array],
+		ranges = [ON_MutableArray array]
+	{
+		var f = 0,
+			_str = $scopy([token raw]),
+			_regex = [NL_regexp make]
+		
+		[regex replace_fun:_str
+					  with:^(rx) {
+			$objget(_regex, $hash("@instance_vars")).rx = rx
+			try [matches addValue:@[
+				@([_regex matched:0]),
+				@([_regex matched:1]),
+				@([_regex matched:2]),
+				@([_regex matched:3]),
+				@([_regex matched:4]),
+				@([_regex matched:5]),
+				@([_regex matched:6]),
+				@([_regex matched:7]),
+				@([_regex matched:8]),
+				@([_regex matched:9])
+			]] catch _ {}
+			try [ranges addValue:@[
+				[_regex matched_pos:0],
+				[_regex matched_pos:1],
+				[_regex matched_pos:2],
+				[_regex matched_pos:3],
+				[_regex matched_pos:4],
+				[_regex matched_pos:5],
+				[_regex matched_pos:6],
+				[_regex matched_pos:7],
+				[_regex matched_pos:8],
+				[_regex matched_pos:9]
+			]] catch _ {}
+			return ""
+		}]
+	}
+
+	if [matches count] > 0 {
+		var match = matches[0],
+			range = ranges[0]
+		if match[1] { // integer
+			return @($int([token raw]))
+		} else if match[2] { // float
+			return @($float([token raw]))
+		} else if match[3] { // nil
+			return null
+		} else if match[4] { // true
+			return [MalTrue make]
+		} else if match[5] { // false
+			return [MalFalse make]
+		} else if match[6] { // string
+			var str = [token substringWithRange:ON_MakeRange(range[6].pos, range[6].len)]
+			str = [[str componentsSeparatedByString:@"\\\\"] componentsJoinedByString:@"\202\158"]
+			str = [[str componentsSeparatedByString:@"\\\""] componentsJoinedByString:@"\""]
+			str = [[str componentsSeparatedByString:@"\\n"] componentsJoinedByString:@"\n"]
+			str = [[str componentsSeparatedByString:@"\202\158"] componentsJoinedByString:@"\\"]
+			return str
+		} else if match[7] { // string
+			$throw("read_atom: expected '\"', got EOF")
+		} else if match[8] { // keyword
+			return @("\202\158" + [[token substringWithRange:ON_MakeRange(range[8].pos, range[8].len)] raw])
+		} else if match[9] { // symbol
+			return [MalSymbol new:token]
+		}
+	}
+	
+	$throw("read_atom: invalid token `" + $string(token) + "`")
+}
+
+function read_list(rdr, start, end) {objn_Typecheck(Reader,rdr,false);objn_Typecheck($tstring,start,false);objn_Typecheck($tstring,end,false)
+	var token = [rdr next], ast = [ON_MutableArray array]
+	
+	if [token characterAtIndex:0] != start
+		$throw("expected '" + start + "'")
+	
+	while (token = [rdr peek]) && [token characterAtIndex:0] != end
+		[ast addValue:read_form(rdr)]
+	
+	if !token
+		$throw("expected '" + end + "', got EOF")
+	
+	[rdr next]
+	return [ast ON_Array]
+}
+
+function read_form(rdr) {objn_Typecheck(Reader,rdr,false)
+	var token = [rdr peek]
+	
+	switch [token characterAtIndex:0] {
+		case "'": [rdr next] && {return @[[MalSymbol stringWithString:@"quote"], read_form(rdr)]}
+		case "`": [rdr next] && {return @[[MalSymbol stringWithString:@"quasiquote"], read_form(rdr)]}
+		case "~": [rdr next] && if [token isEqualToString:@"~@"]
+									return @[[MalSymbol stringWithString:@"splice-unquote"], read_form(rdr)]
+								else
+									return @[[MalSymbol stringWithString:@"unquote"], read_form(rdr)]
+		case "^": [rdr next] && {var meta = read_form(rdr); return @[[MalSymbol stringWithString:@"with-meta"], read_form(rdr), meta]}
+		case "@": [rdr next] && {return @[[MalSymbol stringWithString:@"deref"], read_form(rdr)]}
+		
+		// lists
+		case ")": $throw("unexpected ')'")
+		case "(": return read_list(rdr, "(", ")")
+		
+		// vectors
+		case "]": $throw("unexpected ']'")
+		case "[": return [MalVector fromArray:read_list(rdr, "[", "]")]
+		
+		// hash maps
+		case "}": $throw("unexpected '}'")
+		case "{": return hash_map(read_list(rdr, "{", "}"))
+		
+		default: return read_atom(rdr)
+	}
+}
+
+function read_str(str) {objn_Typecheck(ON_String,str,false)
+	var tokens = tokenize(str)
+	
+	if [tokens count] == 0
+		$throw("empty token")
+	
+	return read_form([[Reader make] initWithTokens:tokens])
+}

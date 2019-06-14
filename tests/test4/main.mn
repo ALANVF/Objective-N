@@ -1,0 +1,269 @@
+#import "../objn/main.neko"
+#import "../objn/object.neko"
+
+@interface NL_UTF8 : ON_Object
+	+ buf_alloc:size
+	+ buf_add:buf char:char
+	+ buf_content:buf
+	+ buf_length:buf
+	+ buf_size:buf
+	+ validate:str
+	+ length:str
+	+ sub:str pos:pos len:len
+	+ get:str index:index
+	+ iter:str with:func
+	+ compare:str1 with:str2
+@end
+
+@interface NL_unicode : ON_Object
+	+ lower:str enc:enc
+	+ upper:str enc:enc
+@end
+
+@interface NL_sys : ON_Object
+	+ get_env:name
+	+ set_env:name to:value
+	
+	+ get_cwd
+	+ set_cwd:cwd
+	
+	+ command:cmd
+	
+	+ env
+@end
+
+@interface NL_file : ON_Object
+	+ full_path:path
+@end
+
+@interface NL_process : ON_Object
+	+ run:cmd args:args
+	
+	+ stdout_read:proc buf:str pos:pos len:len
+	+ stderr_read:proc buf:str pos:pos len:len
+	
+	+ stdin_write:proc buf:str pos:pos len:len
+	+ stdin_close:proc
+	
+	+ exit:proc
+	+ pid:proc
+	+ close:proc
+@end
+
+@interface NL_regexp : ON_Object
+	@property rx (read)
+	
+	+ new:rx
+	+ new:rx options:options
+	
+	- init:rx
+	- init:rx options:options
+	
+	- match:str pos:pos len:len
+	- replace:str1 with:str2
+	- replace_all:str1 with:str2
+	- replace_fun:str with:func
+	- matched:n
+	- matched_pos:n
+@end
+
+{
+var utf8_buf_alloc = $loader.loadprim("std@utf8_buf_alloc", 1),
+	utf8_buf_add = $loader.loadprim("std@utf8_buf_add", 2),
+	utf8_buf_content = $loader.loadprim("std@utf8_buf_content", 1),
+	utf8_buf_length = $loader.loadprim("std@utf8_buf_length", 1),
+	utf8_buf_size = $loader.loadprim("std@utf8_buf_size", 1),
+	utf8_validate = $loader.loadprim("std@utf8_validate", 1),
+	utf8_length = $loader.loadprim("std@utf8_length", 1),
+	utf8_get = $loader.loadprim("std@utf8_get", 2),
+	utf8_sub = $loader.loadprim("std@utf8_sub", 3),
+	utf8_iter = $loader.loadprim("std@utf8_iter", 2),
+	utf8_compare = $loader.loadprim("std@utf8_compare", 2)
+
+@implementation NL_UTF8
+	+ buf_alloc:size {
+		return utf8_buf_alloc(size)
+	}
+	+ buf_add:buf char:char {
+		utf8_buf_add(buf, char)
+	}
+	+ buf_content:buf {
+		return utf8_buf_content(buf)
+	}
+	+ buf_length:buf {
+		return utf8_buf_length(buf)
+	}
+	+ buf_size:buf {
+		return utf8_buf_size(buf)
+	}
+	+ validate:str {
+		return utf8_validate(str)
+	}
+	+ length:str {
+		return utf8_length(str)
+	}
+	+ sub:str pos:pos len:len {
+		return utf8_sub(str, pos, len)
+	}
+	+ get:str index:index {
+		return utf8_get(str, index)
+	}
+	+ iter:str with:func {
+		utf8_iter(str, func)
+	}
+	+ compare:str1 with:str2 {
+		return utf8_compare(str1, str2)
+	}
+@end
+}
+
+{
+var unicode_lower = $loader.loadprim("std@unicode_lower", 2),
+	unicode_upper = $loader.loadprim("std@unicode_upper", 2)
+
+@implementation NL_unicode
+	+ lower:str enc:enc {
+		return unicode_lower(str, enc)
+	}
+	+ upper:str enc:enc {
+		return unicode_upper(str, enc)
+	}
+@end
+}
+
+{
+var get_env = $loader.loadprim("std@get_env", 1),
+	put_env = $loader.loadprim("std@put_env", 2),
+	get_cwd = $loader.loadprim("std@get_cwd", 0),
+	set_cwd = $loader.loadprim("std@set_cwd", 1),
+	sys_command = $loader.loadprim("std@sys_command", 1),
+	sys_env = $loader.loadprim("std@sys_env", 0)
+
+@implementation NL_sys
+	+ get_env:name {
+		return get_env($string(name))
+	}
+	+ set_env:name to:value {
+		put_env(name, value)
+	}
+	
+	+ get_cwd {
+		return get_cwd()
+	}
+	+ set_cwd:cwd {
+		set_cwd(cwd)
+	}
+	
+	+ command:cmd {
+		return sys_command(cmd)
+	}
+	
+	+ env {
+		return sys_env()
+	}
+@end
+}
+
+{
+var file_full_path = $loader.loadprim("std@file_full_path", 1)
+
+@implementation NL_file
+	+ full_path:path {
+		return file_full_path(path)
+	}
+@end
+}
+
+{
+var process_run = $loader.loadprim("std@process_run", 2),
+	process_stdout_read = $loader.loadprim("std@process_stdout_read", 4),
+	process_stderr_read = $loader.loadprim("std@process_stderr_read", 4),
+	process_stdin_write = $loader.loadprim("std@process_stdin_write", 4),
+	process_stdin_close = $loader.loadprim("std@process_stdin_close", 1),
+	process_exit = $loader.loadprim("std@process_exit", 1),
+	process_pid = $loader.loadprim("std@process_pid", 1),
+	process_close = $loader.loadprim("std@process_close", 1)
+
+@implementation NL_process
+	+ run:cmd args:args {
+		return process_run(cmd, args)
+	}
+	
+	// idk how this actually works
+	+ stdout_read:proc buf:str pos:pos len:len {
+		return process_stdout_read(proc, str, pos, len)
+	}
+	+ stderr_read:proc buf:str pos:pos len:len {
+		return process_stderr_read(proc, str, pos, len)
+	}
+	
+	+ stdin_write:proc buf:str pos:pos len:len {
+		return process_stdin_write(proc, str, pos, len)
+	}
+	+ stdin_close:proc {
+		process_stdin_close(proc)
+	}
+	
+	+ exit:proc {
+		return process_exit(proc)
+	}
+	+ pid:proc {
+		return process_pid(proc)
+	}
+	+ close:proc {
+		process_close(proc)
+	}
+@end
+}
+
+{
+var regexp_new = $loader.loadprim("regexp@regexp_new", 1),
+	regexp_new_options = $loader.loadprim("regexp@regexp_new_options", 2),
+	regexp_match = $loader.loadprim("regexp@regexp_match", 4),
+	regexp_replace = $loader.loadprim("regexp@regexp_replace", 3),
+	regexp_replace_all = $loader.loadprim("regexp@regexp_replace_all", 3),
+	regexp_replace_fun = $loader.loadprim("regexp@regexp_replace_fun", 3),
+	regexp_matched = $loader.loadprim("regexp@regexp_matched", 2),
+	regexp_matched_pos = $loader.loadprim("regexp@regexp_matched_pos", 2)
+
+@implementation NL_regexp
+	+ new:rx {
+		return [[this make] init:rx]
+	}
+	+ new:rx options:options {
+		return [[this make] init:rx options:options]
+	}
+	
+	- init:rx {
+		this->rx = regexp_new(rx)
+		
+		return this
+	}
+	- init:rx options:options {
+		this->rx = regexp_new_options(rx, options)
+		
+		return this
+	}
+	
+	- match:str pos:pos len:len {
+		return regexp_match(this->rx, str, pos, len)
+	}
+	- replace:str1 with:str2 {
+		return regexp_replace(this->rx, str1, str2)
+	}
+	- replace_all:str1 with:str2 {
+		return regexp_replace_all(this->rx, str1, str2)
+	}
+	- replace_fun:str with:func {
+		return regexp_replace_fun(this->rx, str, func)
+	}
+	- matched:n {
+		return regexp_matched(this->rx, n)
+	}
+	- matched_pos:n {
+		return regexp_matched_pos(this->rx, n)
+	}
+@end
+}
+
+[NL_sys command:"dir"]

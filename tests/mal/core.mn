@@ -1,0 +1,174 @@
+//#import "../tests/mal/types.mn"
+//#import "../tests/mal/mal_readline.mn"
+//#import "../tests/mal/reader.mn"
+//#import "../tests/mal/printer.mn"
+//#import "../tests/mal/malfunc.mn"
+#import "../tests/mal/core.hn"
+
+function wrap_tf(val) {objn_Typecheck($tbool,val,false)
+	return if val [MalTrue make] else [MalFalse make]
+}
+
+@implementation Core
+	+ ns {
+		return @{
+			@"=": ^(args) {wrap_tf(equal_Q(args[0], args[1]))},
+			@"throw": ^(args) {$throw($string(args[0]))},
+			
+			@"nil?": ^(args) {wrap_tf(args[0] == null)},
+			@"true?": ^(args) {wrap_tf(objn_Typecheck(MalTrue,args[0],true))},
+			@"false?": ^(args) {wrap_tf(objn_Typecheck(MalFalse,args[0],true))},
+			@"string?": ^(args) {wrap_tf(string_Q(args[0]))},
+			@"symbol": ^(args) {[MalSymbol stringWithString:args[0]]},
+			@"symbol?": ^(args) {wrap_tf(objn_Typecheck(MalSymbol,args[0],true))},
+			@"keyword": ^(args) {@("\202\158" + $string(args[0]))},
+			@"keyword?": ^(args) {wrap_tf(objn_Typecheck(ON_String,args[0],true) && !objn_Typecheck(MalSymbol,args[0],true)) && !string_Q(args[0])},
+			@"number?": ^(args) {wrap_tf(objn_Typecheck($array(ON_Integer,ON_Float),args[0],true))},
+			@"fn?": ^(args) {wrap_tf(block_Q(args[0]) || (objn_Typecheck(MalFunc,args[0],true) && ![args[0] isMacro]))},
+			@"macro?": ^(args) {wrap_tf(objn_Typecheck(MalFunc,args[0],true) && [args[0] isMacro])},
+			
+			@"pr-str": ^(args) {[[args arrayWithFunction:^(v) {_pr_str(v, true)}] componentsJoinedByString:@" "]},
+			@"str": ^(args) {[[args arrayWithFunction:^(v) {_pr_str(v, false)}] componentsJoinedByString:@""]},
+			@"prn": ^(args) {$print([[args arrayWithFunction:^(v) {_pr_str(v, true)}] componentsJoinedByString:@" "], "\n");null},
+			@"println": ^(args) {$print([[args arrayWithFunction:^(v) {_pr_str(v, false)}] componentsJoinedByString:@" "], "\n");null},
+			@"read-string": ^(args) {read_str(args[0])},
+			@"readline": ^(args) {
+				var rawline = _readline($string(args[0]))
+				if rawline != ""
+					return @(rawline)
+				else
+					return null
+			},
+			@"slurp": ^(args) {@([NL_file contents:$string(args[0])])},
+			
+			@"<": ^(args) {wrap_tf([args[0] raw] < [args[1] raw])},
+			@"<=": ^(args) {wrap_tf([args[0] raw] <= [args[1] raw])},
+			@">": ^(args) {wrap_tf([args[0] raw] > [args[1] raw])},
+			@">=": ^(args) {wrap_tf([args[0] raw] >= [args[1] raw])},
+			@"+": ^(args) {@([args[0] raw] + [args[1] raw])},
+			@"-": ^(args) {@([args[0] raw] - [args[1] raw])},
+			@"*": ^(args) {@([args[0] raw] * [args[1] raw])},
+			@"/": ^(args) {@([args[0] raw] / [args[1] raw])},
+			@"time-ms": ^(args) {@"<todo>"},
+			
+			@"list": ^(args) {args},
+			@"list?": ^(args) {wrap_tf(list_Q(args[0]))},
+			@"vector": ^(args) {[MalVector fromArray:args]},
+			@"vector?": ^(args) {wrap_tf(objn_Typecheck(MalVector,args[0],true))},
+			@"hash-map": ^(args) {hash_map(args)},
+			@"map?": ^(args) {wrap_tf(objn_Typecheck(ON_Dictionary,args[0],true))},
+			@"assoc": ^(args) {
+				var new_dict = [ON_MutableDictionary dictionaryWithDictionary:args[0]
+																	copyItems:false]
+				return assoc_BANG(new_dict, _rest(args))
+			},
+			@"dissoc": ^(args) {
+				var new_dict = [ON_MutableDictionary dictionaryWithDictionary:args[0]
+																	copyItems:false]
+				var ra = _rest(args)
+				for(var i = 0; i < [ra count]; i += 1)
+					[new_dict removeValueForKey:ra[i]]
+				return new_dict
+			},
+			@"get": ^(args) {
+				args[0]==null && {return null}
+				if [args[0] hasKey:args[1]] args[0][args[1]] else null
+			},
+			@"contains?": ^(args) {
+				args[0]==null && {return wrap_tf(false)}
+				wrap_tf([args[0] hasKey:args[1]])
+			},
+			@"keys": ^(args) {[args[0] allKeys]},
+			@"vals": ^(args) {[args[0] allValues]},
+			
+			@"sequential?": ^(args) {wrap_tf(objn_Typecheck(ON_Array,args[0],true))},
+			@"cons": ^(args) {
+				var res = [ON_MutableArray array]
+				[res addValue:args[0]]
+				[res addValuesFromArray:args[1]]
+				return res
+			},
+			@"concat": ^(args) {
+				var res = [ON_MutableArray array]
+				for(var i = 0; i < [args count]; i += 1)
+					[res addValuesFromArray:args[i]]
+				return [res ON_Array]
+			},
+			@"nth": ^(args) {if args[1] < [args[0] count] args[0][args[1]] else $throw("nth: index out of range")},
+			@"first": ^(args) {
+				args[0]==null && {return null}
+				[args[0] count]>0 && {return args[0][0]}
+				null
+			},
+			@"rest": ^(args) {
+				args[0]==null && {return null}
+				[args[0] count]>1 && {return _rest(args[0])}
+				@[]
+			},
+			@"empty?": ^(args) {if args[0]==null wrap_tf(true) else wrap_tf([args[0] count] == 0)},
+			@"count": ^(args) {if args[0]==null @0 else @([args[0] count])},
+			@"apply": ^(args) {
+				objn_Typecheck($array($tfunction,MalFunc),args[0],false)
+				var fargs = [ON_MutableArray array]
+				if [args count] > 1
+					[fargs addValuesFromArray:[args subarrayWithRange:ON_MakeRange(1, [args count]-2)]]
+				[fargs addValuesFromArray:[args lastValue]]
+				apply(f, [fargs ON_Array])
+			},
+			@"map": ^(args) {
+				objn_Typecheck($array($tfunction,MalFunc),args[0],false)
+				[args[1] arrayWithFunction:^(v) {apply(args[0], @[v])}]
+			},
+			@"conj": ^(array) {
+				var res = [ON_MutableArray array]
+				if objn_Typecheck(MalVector,args[0],true) {
+					[res addValuesFromArray:args[0]]
+					[res addValuesFromArray:_rest(args)]
+					return [MalVector fromArray:[res ON_Array]]
+				} else {
+					[res addValuesFromArray:@([[_rest(args) reverseValueEnumerator] allValues])]
+					[res addValuesFromArray:args[0]]
+					return [res ON_Array]
+				}
+			},
+			@"seq": ^(args) {
+				if list_Q(args[0]) {
+					[args[0] count]==0 && {return null}
+					return args[0]
+				} else if objn_Typecheck(MalVector,args[0],true) {
+					[args[0] count]==0 && {return null}
+					return [ON_Array arrayWithArray:args[0]]
+				} else if string_Q(args[0]) {
+					[args[0] length]==0 && {return null}
+					return [args[0] componentsSeparatedByString:@""]
+				} else if args[0] == null
+					return args[0]
+				else
+					$throw("seq: called on non-sequence")
+			},
+			
+			@"meta": ^(args) {
+				if objn_Typecheck(MalFunc,args[0],true)
+					return [args[0] meta]
+				else
+					return $string(args[0])
+			},
+			@"with-meta": ^(args) {
+				//how tf does this work lol
+				return args[0]
+			},
+			@"atom": ^(args) {[MalAtom fromObject:args[0]]},
+			@"atom?": ^(args) {wrap_tf(atom_Q(args[0]))},
+			@"deref": ^(args) {[args[0] val]},
+			@"reset!": ^(args) {[args[0] val: args[1]];[args[0] val]},
+			@"swap!": ^(args) {
+				objn_Typecheck(MalAtom,args[0],false);objn_Typecheck($array($tfunction,MalFunc),args[1],false)
+				var fargs = [ON_MutableArray arrayWithArray:@[[args[0] val]]]
+				if [args count] > 2
+					[fargs addValuesFromArray:[args subarrayWithRange:ON_MakeRange(2, [args count]-2)]]
+				[args[0] val: apply(f, [fargs ON_Array])]
+				return [args[0] val]
+			}
+		}
+	}
+@end

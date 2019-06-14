@@ -1,0 +1,165 @@
+#import "../tests/mal/types.hn"
+
+@implementation Env
+	- initWithBindings:outer binds:binds exprs:exprs {
+		objn_Typecheck($array(Env,ON_Nil), outer, false);objn_Typecheck(ON_Array, binds, false);objn_Typecheck(ON_Array, exprs, false)
+		
+		this->outer = objn_Copy(outer)
+		this->data = [ON_MutableDictionary dictionary]
+		
+		for(var i = 0; i < [binds count]; i += 1) {
+			if [@($string(binds[i])) isEqualToString:@"&"] {
+				if [exprs count] > i
+					this->data[binds[i+1]] = [exprs subarrayWithRange:ON_MakeRange(i, [exprs count] - i)]
+				else
+					this->data[binds[i+1]] = @[]
+				break;
+			} else {
+				this->data[binds[i]] = exprs[i]
+			}
+		}
+		
+		return this
+	}
+	
+	- initWithOuter:outer {
+		return [this initWithBindings:outer
+								binds:@[]
+								exprs:@[]]
+	}
+	
+	- init {
+		return [this initWithBindings:nil
+								binds:@[]
+								exprs:@[]]
+	}
+	
+	+ fromOuter:outer {
+		return [[Env make] initWithOuter:outer]
+	}
+	
+	+ fromBindings:outer binds:binds exprs:exprs {
+		return [[Env make] initWithBindings:outer
+									  binds:binds
+									  exprs:exprs]
+	}
+	
+	- set:key val:val {objn_Typecheck(MalSymbol, key, false)
+		this->data[key] = val
+		return val
+	}
+	
+	- find:key {objn_Typecheck(MalSymbol, key, false)
+		if [this->data hasKey:key]
+			return this
+		else if this->outer
+			return [this->outer find:key]
+		else
+			return nil
+	}
+	
+	- get:key {objn_Typecheck(MalSymbol, key, false)
+		var e = [this find:key]
+		if e
+			return [e data][key]
+		else
+			$throw("'"+$string(key)+"' not found")
+    }
+@end
+
+@implementation MalTrue
+@end
+
+@implementation MalFalse
+@end
+
+@implementation MalSymbol
+	+ new:str {[this stringWithString:str]}
+@end
+
+function string_Q(obj) {obj==null && {return false}
+	if [obj isKindOfClass:ON_String] {
+		var s = [obj ON_String]
+		if [s isKindOfClass:MalSymbol] {
+			return ![s hasPrefix:@"\202\158"]
+		}
+	}
+	return false
+}
+
+// lists
+
+function list_Q(obj) {obj==null && {return false}
+	return [obj isKindOfClass:ON_Array] && [obj class] != MalVector
+}
+
+function _rest(obj) {objn_Typecheck(ON_Array, obj, false)
+	return [obj subarrayWithRange:ON_MakeRange(1, [obj count]-1)]
+}
+
+// vectors
+
+@implementation MalVector
+	+ fromArray:arr {objn_Typecheck(ON_Array, arr, false)
+		return [[this make] initWithArray:arr copyItems:false]
+	}
+@end
+
+function assoc_BANG(d, kvs) {objn_Typecheck(ON_MutableDictionary, d, false);objn_Typecheck(ON_Array, kvs, false)
+	for(var i = 0; i < [kvs count]; i += 2)
+		d[kvs[i]] = kvs[i+1]
+	return d
+}
+
+function hash_map(kvs) {objn_Typecheck(ON_Array, kvs, false)
+	return assoc_BANG([ON_MutableDictionary dictionary], kvs)
+}
+
+// mal functions
+
+function block_Q(obj) {
+	return $typeof(obj) == $tfunction
+}
+
+@implementation MalAtom
+	- init:val {
+		this->val = objn_Copy(val)
+		return this
+	}
+	
+	+ fromObject:val {
+		return [[MalAtom make] init:val]
+	}
+@end
+
+function atom_Q(obj) {
+	return objn_Typecheck(MalAtom, obj, true)
+}
+
+// general functions
+
+function sequential_Q(obj) {objn_Typecheck($tobject, obj, false)
+	return objn_Typecheck(ON_Array, obj, true)
+}
+
+function equal_Q(a, b) {objn_Typecheck($tobject, a, false);objn_Typecheck($tobject, b, false)
+	if !([a class] == [b class]
+			||
+		(objn_Typecheck(ON_Array, a, true) && objn_Typecheck(ON_Array, b, true))
+			||
+		(objn_Typecheck($array(ON_Integer,ON_Float), a, true) && objn_Typecheck($array(ON_Integer,ON_Float), b, true))
+			||
+		(string_Q(a) && string_Q(b))
+	) {
+		return false
+	}
+	
+	if objn_Typecheck(MalTrue, a, true)
+		return true
+	else if objn_Typecheck(MalFalse, a, true)
+		return true
+	else if objn_Typecheck($array(ON_Integer,ON_Float), a, true)
+		return [a raw] == [b raw]
+	else
+		return a == b
+}

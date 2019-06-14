@@ -1,0 +1,87 @@
+#import "../objn/main.neko"
+#import "../objn/object.neko"
+#import "../objn/ON.mn"
+
+@interface Test : ON_Object
+	@property ivar1 (read, write)
+	
+	- init
+	- initWithValue:value
+@end
+		
+@implementation Test
+	- init {
+		$print("created new Test\n")
+		this->ivar1 = 1
+		return this
+	}
+	
+	- initWithValue:value {
+		$print("created new Test with ", value, "\n")
+		this->ivar1 = value
+		return this
+	}
+@end
+
+var o1 = [[ON_Object make] init]
+$print(o1, "\n")
+
+var t1 = [[Test make] init]
+var t2 = [[Test make] initWithValue: 5]
+$print([t1 ivar1], "\n", [t2 ivar1], "\n")
+
+$print([[ON_Integer make] initWithValue: 10], "\n")
+ON_Log([[ON_Integer make] initWithValue: 10], @"banana", @1, @2.3)
+
+var ma1 = @[@1, @2.3, @"mango"]
+
+ON_Log(
+	ma1,
+	[ma1 valueAtIndex:2],
+	
+	[@",1,2,3,,4,,,5," componentsSeparatedByString:","],
+	[@"" componentsSeparatedByString:","],
+	[@"," componentsSeparatedByString:","],
+	[@",1" componentsSeparatedByString:","],
+	
+	[@"banana" substringToIndex:2],
+	[@"banana" substringFromIndex:2],
+	[@"banana" substringWithRange:ON_MakeRange(0, 5)],
+	
+	[@"" respondsToSelector:@selector(substringFromIndex)],
+	[@"" respondsToSelector:@selector(substringFromIndex:)],
+	[@"" respondsToSelector:@selector(substringFromIndex:andBanana:)],
+	
+	[@[] performSelector:@selector(count)]
+)
+
+var rx1 = [NL_regexp new:"(\\d+)(,\\d+)+"],
+	str1 = "1,23,456,78,9,10"
+
+$print([rx1 match:str1
+			  pos:0
+			  len:$ssize(str1)], "\n")
+$print([rx1 matched_pos:2], "\n")
+
+ON_Log(
+	[@"abc" commonPrefixWithString:@""],
+	[@"abc" commonPrefixWithString:@"a"],
+	[@"abc" commonPrefixWithString:@"ab"],
+	[@"abc" commonPrefixWithString:@"ac"],
+	[@"abc" commonPrefixWithString:@"bc"],
+	[@"Abc" commonPrefixWithString:@"aB" caseInsensitive:true]
+)
+
+var ms1 = [ON_MutableString stringWithString:@"bananas"]
+
+[ms1 deleteCharactersInRange:ON_MakeRange(2, 3)]
+$print(ms1, "\n")
+[ms1 insertString:@"nan" atIndex:2]
+$print(ms1, "\n")
+
+if 1 == 1 || 2 == 2
+	$print("1\n")
+
+var s = @"var a = 1", alnum = [ON_CharacterSet alphanumericCharacterSet]
+for(var i = 0; i < [s length]; i += 1)
+	$print([s characterAtIndex:i], " ", [NL_UTF8 get:[s raw] index:i], " ", [alnum characterIsMember:[NL_UTF8 get:[s raw] index:i]], "\n")

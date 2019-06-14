@@ -1,0 +1,5 @@
+#import "../objn/main.neko"
+#import "../objn/object.neko"
+#import "../objn/nekolib.mn"
+
+[NL_sys command:"dir"]

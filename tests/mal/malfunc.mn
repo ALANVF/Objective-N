@@ -1,0 +1,27 @@
+//#import "types.hn"
+#import "../tests/mal/malfunc.hn"
+
+@implementation MalFunc
+	- init:ast env:env params:params {
+		objn_Typecheck(ON_Array,ast,false);objn_Typecheck(Env,env,false);objn_Typecheck(ON_Array,params,false);
+		this->ast = objn_Copy(ast)
+		this->env = objn_Copy(env)
+		this->params = objn_Copy(params)
+		this->isMacro = false
+		this->meta = null
+		return this
+	}
+	
+	- apply:args {objn_Typecheck(ON_Array,args,false);
+		return EVAL(this->ast, [Env fromBindings:this->env
+										   binds:this->params
+										   exprs:args])
+	}
+@end
+
+function apply(f, args) {objn_Typecheck($array($tfunction,MalFunc),f,false);objn_Typecheck(ON_Array,args,false);
+	if objn_Typecheck(MalFunc,f,true)
+		return [f apply:args]
+	else
+		return f(args)
+}

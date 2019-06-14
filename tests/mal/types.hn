@@ -1,0 +1,69 @@
+// env definition
+
+@interface Env : ON_Object
+	@property data (read) //ON_MutableDictionary
+	@property outer //Env
+	
+	//                 (Env)       @[]        @[]
+	- initWithBindings:outer binds:binds exprs:exprs
+	- initWithOuter:outer
+	- init
+	
+	+ fromOuter:outer
+	+ fromBindings:outer binds:binds exprs:exprs
+	
+	- set:key val:val
+	- find:key
+	- get:key
+@end
+
+// mal types
+
+@interface MalTrue : ON_Object
+@end
+
+@interface MalFalse : ON_Object
+@end
+
+@interface MalSymbol : ON_String
+	+ new:str
+@end
+
+function string_Q(obj) {}
+
+// lists
+
+function list_Q(obj) {}
+
+function _rest(obj) {}
+
+// vectors
+
+@interface MalVector : ON_Array	
+	+ fromArray:arr
+@end
+
+// hash maps
+
+function assoc_BANG(d, kvs) {}
+function hash_map(kvs) {}
+
+// mal functions
+
+function block_Q(obj) {}
+
+// atoms
+
+@interface MalAtom : ON_Object
+	@property val (read, write)//ON_Object
+	
+	- init:val
+	
+	+ fromObject:val
+@end
+
+function atom_Q(obj) {}
+
+// general functions
+
+function equal_Q(a, b) {}

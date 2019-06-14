@@ -1,0 +1,76 @@
+#import "../objn/main.neko"
+#import "../objn/object.neko"
+#import "../objn/ON.mn"
+
+#import "../tests/mal/mal_readline.mn"
+#import "../tests/mal/types.mn"
+#import "../tests/mal/reader.mn"
+#import "../tests/mal/printer.mn"
+
+function READ(str) {objn_Typecheck(ON_String,str,false)
+	return read_str(str)
+}
+
+function eval_ast(ast, env) {objn_Typecheck(ON_Object,ast,false);objn_Typecheck(ON_Dictionary,env,false)
+	if [ast isKindOfClass:MalSymbol] {
+		if [env hasKey:ast]
+			return env[ast]
+		else
+			$throw("'" + $string(ast) + "' not found")
+	} else if [ast isKindOfClass:ON_Array] {
+		var newList = [ast arrayWithFunction:^(v) {EVAL(v, env)}]
+		if [ast isKindOfClass:MalVector]
+			return [MalVector fromArray:newList]
+		else
+			return newList
+	} else if [ast isKindOfClass:ON_Dictionary] {
+		var newDict = [ON_MutableDictionary dictionary]
+		
+		var k = [ast allKeys], v = [ast allValues]
+		for(var i = 0; i < [ast count]; i += 1)
+			newDict[k[i]] = EVAL(v[i], env)
+		
+		return [newDict ON_Dictionary]
+	} else {
+		return ast
+	}
+}
+
+function EVAL(ast, env) {objn_Typecheck(ON_Object,ast,false);objn_Typecheck(ON_Dictionary,env,false)
+	if !list_Q(ast)
+		return eval_ast(ast, env)
+	
+	if [ast count] == 0
+		return ast
+	
+	var el = eval_ast(ast, env)
+	var f = el[0]
+	return f(_rest(el))
+}
+
+function PRINT(exp) {objn_Typecheck(ON_Object,exp,false)
+	return _pr_str(exp, true)
+}
+
+function REP(line, env) {objn_Typecheck(ON_String,line,false);objn_Typecheck(ON_Dictionary,env,false)
+	return PRINT(EVAL(READ(line), env))
+}
+
+function main() {
+	var repl_env = @{
+		@"+": ^(args) {[args[0] raw] + [args[1] raw]},
+		@"-": ^(args) {[args[0] raw] - [args[1] raw]},
+		@"*": ^(args) {[args[0] raw] * [args[1] raw]},
+		@"/": ^(args) {[args[0] raw] / [args[1] raw]}
+	}
+	
+	while true {
+		var rawline = _readline("user> ")
+		if rawline == "" {break}
+		var line = @(rawline)
+		if [line length] == 0 continue
+		$print(REP(line, repl_env), "\n")
+	}
+}
+
+main()

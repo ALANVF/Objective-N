@@ -1,0 +1,49 @@
+function _pr_str(obj, print_readably) {objn_Typecheck($tbool,print_readably,false)
+	if obj == null
+		return @"nil"
+	else if objn_Typecheck(MalTrue,obj,true)
+		return @"true"
+	else if objn_Typecheck(MalFalse,obj,true)
+		return @"false"
+	else if objn_Typecheck(MalSymbol,obj,true)
+		return @($string(obj))
+	else if objn_Typecheck(ON_String,obj,true) {
+		if [obj length] > 0 && [obj hasPrefix:@"\202\158"] {
+			return @(":" + [[obj substringWithRange:ON_MakeRange(1, [obj length]-1)] raw])
+		} else if print_readably {
+			obj = [[obj componentsSeparatedByString:@"\\"] componentsJoinedByString:@"\\\\"]
+			obj = [[obj componentsSeparatedByString:@"\""] componentsJoinedByString:@"\\\""]
+			obj = [[obj componentsSeparatedByString:@"\n"] componentsJoinedByString:@"\\n"]
+			
+			return @("\"" + [obj raw] + "\"")
+		} else {
+			return obj
+		}
+	} else if objn_Typecheck(ON_Array,obj,true) {
+		var elems = [ON_MutableArray array]
+		
+		for(var i = 0; i < [obj count]; i += 1)
+			[elems addValue:_pr_str(obj[i], print_readably)]
+		
+		if objn_Typecheck(MalVector,obj,true)
+			return @("[" + [[elems componentsJoinedByString:@" "] raw] + "]")
+		else
+			return @("(" + [[elems componentsJoinedByString:@" "] raw] + ")")
+	} else if objn_Typecheck(ON_Dictionary,obj,true) {
+		var dict = [ON_Dictionary dictionaryWithDictionary:obj]
+		var elems = [ON_MutableArray array]
+		var keys = [dict allKeys]
+		
+		for(var i = 0; i < [keys count]; i += 1) {
+			[elems addValue:_pr_str(keys[i], print_readably)]
+			[elems addValue:_pr_str(dict[keys[i]], print_readably)]
+		}
+		
+		return @("{" + [[elems componentsJoinedByString:@" "] raw] + "}")
+	} else if block_Q(obj)
+		return @"#<native function>"
+	else if atom_Q(obj)
+		return @("(atom " + [_pr_str([obj val], print_readably) raw] + ")")
+	else
+		return @($string(obj))
+}

@@ -1,0 +1,3 @@
+@interface Core : ON_Object
+	+ ns
+@end
