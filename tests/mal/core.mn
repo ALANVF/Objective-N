@@ -59,12 +59,12 @@ function wrap_tf(val) {objn_Typecheck($tbool,val,false)
 			@"map?": ^(args) {wrap_tf(objn_Typecheck(ON_Dictionary,args[0],true))},
 			@"assoc": ^(args) {
 				var new_dict = [ON_MutableDictionary dictionaryWithDictionary:args[0]
-																	copyItems:false]
+																	copyItems:true]
 				return assoc_BANG(new_dict, _rest(args))
 			},
 			@"dissoc": ^(args) {
 				var new_dict = [ON_MutableDictionary dictionaryWithDictionary:args[0]
-																	copyItems:false]
+																	copyItems:true]
 				var ra = _rest(args)
 				for(var i = 0; i < [ra count]; i += 1)
 					[new_dict removeValueForKey:ra[i]]
