@@ -40,6 +40,8 @@ object Main extends App {
 		def objn_value: Parser[Any] = (
 			"nil" ^^^ (messageS("ON_Nil", "new"))
 				|
+			"NULL" ^^^ (messageS("ON_Null", "make"))
+				|
 			raw"""@"(?:\\\\||\\"||[^"])*?"""".r ^^ {v=>messageM("ON_String", List(("stringWithNekoString", s"$v".tail)))}
 				|
 			"@\\d+\\.\\d+".r ^^ {v=>messageM("ON_Float", List(("floatWithNekoFloat", s"$v".tail)))}
@@ -232,6 +234,14 @@ object Main extends App {
 				case None ~ None ~ None ~ b             => s"while true $b"
 			}
 		
+		def for_in_expr: Parser[Any] =
+			("for" ~ "(") ~> "var".? ~ name ~ ("," ~> name).? ~ ("in" ~> expr <~ ")") ~ statement ^^ {
+				case Some(_) ~ v1 ~ Some(v2) ~ e ~ b => s"""{var $v1,$v2,@__e=ON_MakeEnumerator2($e);while {$v2=${messageS("@__e[1]","nextValue")};$v1=${messageS("@__e[0]","nextValue")}}!=${messageS("ON_Nil","make")} $b}"""
+				case Some(_) ~ v1 ~ None     ~ e ~ b => s"""{var $v1,@__e=ON_MakeEnumerator($e);while ($v1=${messageS("@__e","nextValue")})!=${messageS("ON_Nil","make")} $b}"""
+				case None    ~ v1 ~ Some(v2) ~ e ~ b => s"""{var @__e=ON_MakeEnumerator2($e);while {$v2=${messageS("@__e[1]","nextValue")};$v1=${messageS("@__e[0]","nextValue")}}!=${messageS("ON_Nil","make")} $b}"""
+				case None    ~ v1 ~ None     ~ e ~ b => s"""{var @__e=ON_MakeEnumerator($e);while ($v1=${messageS("@__e","nextValue")})!=${messageS("ON_Nil","make")} $b}"""
+			}
+		
 		def try_catch_expr: Parser[Any] =
 			("try" ~> expr) ~ ("catch" ~> name) ~ expr ^^ {
 				case t ~ e ~ b => s"try $t catch $e $b"
@@ -289,6 +299,8 @@ object Main extends App {
 			while_expr
 				|
 			for_expr
+				|
+			for_in_expr
 				|
 			try_catch_expr
 				|
