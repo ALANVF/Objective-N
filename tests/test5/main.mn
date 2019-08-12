@@ -1,0 +1,15 @@
+#import "../objn/main.neko"
+#import "../objn/object.neko"
+#import "../objn/ON.mn"
+
+for(var v in @[5, 10, 15])
+	$print(v, "\n")
+
+for(var i, v in @[5, 10, 15])
+	$print(i, ",", v, "\n")
+
+for(var k in @{@"a": 1, @"b": 2, @"c": 3})
+	$print(k, "\n")
+
+for(var k, v in @{@"a": 1, @"b": 2, @"c": 3})
+	$print(k, ": ", v, "\n")
