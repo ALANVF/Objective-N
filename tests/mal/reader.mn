@@ -8,7 +8,6 @@
 	- peek
 @end
 
-
 @implementation Reader
 	- initWithTokens:toks {objn_Typecheck(ON_Array,toks,false)
 		this->tokens = toks
@@ -32,7 +31,6 @@
 			return nil
 	}
 @end
-
 
 function tokenize(str) {objn_Typecheck(ON_String,str,false)
 	var regex = [NL_regexp new:"[\\s,]*(~@|[\\[\\]{}()'`~^@]|\"(?:[\\\\].|[^\\\\\"])*\"?|;.*|[^\\s\\[\\]{}()'\"`@,;]+)"]
@@ -115,7 +113,7 @@ function read_atom(rdr) {objn_Typecheck(Reader,rdr,false)
 		} else if match[2] { // float
 			return @($float([token raw]))
 		} else if match[3] { // nil
-			return null
+			return NULL
 		} else if match[4] { // true
 			return [MalTrue make]
 		} else if match[5] { // false
@@ -159,7 +157,7 @@ function read_form(rdr) {objn_Typecheck(Reader,rdr,false)
 	var token = [rdr peek]
 	
 	switch [token characterAtIndex:0] {
-		case "'": [rdr next] && {return @[[MalSymbol stringWithString:@"quote"], read_form(rdr)]}
+		case "'" : [rdr next] && {return @[[MalSymbol stringWithString:@"quote"], read_form(rdr)]}
 		case "`": [rdr next] && {return @[[MalSymbol stringWithString:@"quasiquote"], read_form(rdr)]}
 		case "~": [rdr next] && if [token isEqualToString:@"~@"]
 									return @[[MalSymbol stringWithString:@"splice-unquote"], read_form(rdr)]

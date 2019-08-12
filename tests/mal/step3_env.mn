@@ -23,9 +23,8 @@ function eval_ast(ast, env) {objn_Typecheck(ON_Object,ast,false);objn_Typecheck(
 	} else if [ast isKindOfClass:ON_Dictionary] {
 		var newDict = [ON_MutableDictionary dictionary]
 		
-		var k = [ast allKeys], v = [ast allValues]
-		for(var i = 0; i < [ast count]; i += 1)
-			newDict[k[i]] = EVAL(v[i], env)
+		for(var k, v in ast)
+			newDict[k] = EVAL(v, env)
 		
 		return [newDict ON_Dictionary]
 	} else {
@@ -45,13 +44,13 @@ function EVAL(ast, env) {objn_Typecheck(ON_Object,ast,false);objn_Typecheck(Env,
 		$throw("attempt to apply on non-symbol")
 	
 	if [a0 isEqualToString:@"def!"]
-		return [env set:alst[1] val:EVAL(alst[2], env)]
+		return [env set:ast[1] val:EVAL(ast[2], env)]
 	else if [a0 isEqualToString:@"let*"] {
 		var let_env = [Env fromOuter:env],
-			binds = alst[1]
+			binds = ast[1]
 		for(var i = 0; [binds count]; i += 2)
 			[let_env set:binds[i] val:EVAL(binds[i+1], let_env)]
-		return EVAL(alst[2], let_env)
+		return EVAL(ast[2], let_env)
 	} else {
 		var el = eval_ast(ast, env)
 		var f = el[0]

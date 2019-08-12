@@ -14,7 +14,7 @@ function READ(str) {objn_Typecheck(ON_String,str,false)
 }
 
 function is_pair(obj) {
-	obj==null && {return false}
+	obj==NULL && {return false}
 	[obj isKindOfClass:ON_Array] && [obj count] > 0
 }
 
@@ -34,7 +34,7 @@ function quasiquote(ast) {objn_Typecheck(ON_Object,ast,false)
 	}
 }
 
-function is_macro_call(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function is_macro_call(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
 	if list_Q(ast) {
 		if [ast[0] isKindOfClass:MalSymbol] && [env find:ast[0]] {
 			var mf = [env get:ast[0]]
@@ -46,7 +46,7 @@ function is_macro_call(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,fa
 	return false
 }
 
-function macroexpand(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function macroexpand(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
 	while is_macro_call(ast, env)
 		ast = [[env get:ast[0]] apply:_rest(ast)]
 	
@@ -55,7 +55,7 @@ function macroexpand(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,fals
 
 
 
-function eval_ast(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
 	if [ast isKindOfClass:MalSymbol] {
 		return [env get:ast]
 	} else if [ast isKindOfClass:ON_Array] {
@@ -67,9 +67,8 @@ function eval_ast(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);
 	} else if [ast isKindOfClass:ON_Dictionary] {
 		var newDict = [ON_MutableDictionary dictionary]
 		
-		var k = [ast allKeys], v = [ast allValues]
-		for(var i = 0; i < [ast count]; i += 1)
-			newDict[k[i]] = EVAL(v[i], env)
+		for(var k, v in ast)
+			newDict[k] = EVAL(v, env)
 		
 		return [newDict ON_Dictionary]
 	} else {
@@ -77,7 +76,7 @@ function eval_ast(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);
 	}
 }
 
-function EVAL(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
 	while true {
 		if !list_Q(ast)
 			return eval_ast(ast, env)
@@ -130,11 +129,11 @@ function EVAL(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn
 			ast = [ast lastValue] // TCO
 		} else if [a0sym isEqualToString:@"if"] {
 			var cond = EVAL(ast[1], env)
-			if objn_Typecheck($array($tnull,MalFalse),cond,true) {
+			if objn_Typecheck($array(ON_Null,MalFalse),cond,true) {
 				if [ast count] > 3 {
 					ast = ast[3] // TCO
 				} else {
-					return null
+					return NULL
 				}
 			} else {
 				ast = ast[2] // TCO
@@ -160,7 +159,7 @@ function EVAL(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn
 	}
 }
 
-function PRINT(exp) {//objn_Typecheck($array($tnull,ON_Object),exp,false)
+function PRINT(exp) {//objn_Typecheck($array(ON_Null,ON_Object),exp,false)
 	return _pr_str(exp, true)
 }
 
@@ -173,11 +172,8 @@ function main() {
 		core_ns = [Core ns],
 		args = [@($loader.args) arrayWithFunction:^(v) {@(v)}]
 	
-	var k = [core_ns allKeys],
-		v = [core_ns allValues]
-	
-	for(var i = 0; i < [core_ns count]; i += 1)
-		[repl_env set:[MalSymbol new:k[i]] val:v[i]]
+	for(var k, v in core_ns)
+		[repl_env set:[MalSymbol new:k] val:v]
 	
 	[repl_env set:[MalSymbol new:@"eval"] val:^(args) {
 		return EVAL(args[0], repl_env)
@@ -200,7 +196,7 @@ function main() {
 		catch e
 			$print("Error: ", e, "\n")
 		
-		return null
+		return NULL
 	}
 	
 	while true {

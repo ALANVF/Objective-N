@@ -15,7 +15,7 @@ function wrap_tf(val) {objn_Typecheck($tbool,val,false)
 			@"=": ^(args) {wrap_tf(equal_Q(args[0], args[1]))},
 			@"throw": ^(args) {$throw($string(args[0]))},
 			
-			@"nil?": ^(args) {wrap_tf(args[0] == null)},
+			@"nil?": ^(args) {wrap_tf(args[0] == NULL)},
 			@"true?": ^(args) {wrap_tf(objn_Typecheck(MalTrue,args[0],true))},
 			@"false?": ^(args) {wrap_tf(objn_Typecheck(MalFalse,args[0],true))},
 			@"string?": ^(args) {wrap_tf(string_Q(args[0]))},
@@ -29,15 +29,15 @@ function wrap_tf(val) {objn_Typecheck($tbool,val,false)
 			
 			@"pr-str": ^(args) {[[args arrayWithFunction:^(v) {_pr_str(v, true)}] componentsJoinedByString:@" "]},
 			@"str": ^(args) {[[args arrayWithFunction:^(v) {_pr_str(v, false)}] componentsJoinedByString:@""]},
-			@"prn": ^(args) {$print([[args arrayWithFunction:^(v) {_pr_str(v, true)}] componentsJoinedByString:@" "], "\n");null},
-			@"println": ^(args) {$print([[args arrayWithFunction:^(v) {_pr_str(v, false)}] componentsJoinedByString:@" "], "\n");null},
+			@"prn": ^(args) {$print([[args arrayWithFunction:^(v) {_pr_str(v, true)}] componentsJoinedByString:@" "], "\n");NULL},
+			@"println": ^(args) {$print([[args arrayWithFunction:^(v) {_pr_str(v, false)}] componentsJoinedByString:@" "], "\n");NULL},
 			@"read-string": ^(args) {read_str(args[0])},
 			@"readline": ^(args) {
 				var rawline = _readline($string(args[0]))
 				if rawline != ""
 					return @(rawline)
 				else
-					return null
+					return NULL
 			},
 			@"slurp": ^(args) {@([NL_file contents:$string(args[0])])},
 			
@@ -71,11 +71,11 @@ function wrap_tf(val) {objn_Typecheck($tbool,val,false)
 				return new_dict
 			},
 			@"get": ^(args) {
-				args[0]==null && {return null}
-				if [args[0] hasKey:args[1]] args[0][args[1]] else null
+				args[0]==NULL && {return NULL}
+				if [args[0] hasKey:args[1]] args[0][args[1]] else NULL
 			},
 			@"contains?": ^(args) {
-				args[0]==null && {return wrap_tf(false)}
+				args[0]==NULL && {return wrap_tf(false)}
 				wrap_tf([args[0] hasKey:args[1]])
 			},
 			@"keys": ^(args) {[args[0] allKeys]},
@@ -96,17 +96,17 @@ function wrap_tf(val) {objn_Typecheck($tbool,val,false)
 			},
 			@"nth": ^(args) {if args[1] < [args[0] count] args[0][args[1]] else $throw("nth: index out of range")},
 			@"first": ^(args) {
-				args[0]==null && {return null}
+				args[0]==NULL && {return NULL}
 				[args[0] count]>0 && {return args[0][0]}
-				null
+				NULL
 			},
 			@"rest": ^(args) {
-				args[0]==null && {return null}
+				args[0]==NULL && {return NULL}
 				[args[0] count]>1 && {return _rest(args[0])}
 				@[]
 			},
-			@"empty?": ^(args) {if args[0]==null wrap_tf(true) else wrap_tf([args[0] count] == 0)},
-			@"count": ^(args) {if args[0]==null @0 else @([args[0] count])},
+			@"empty?": ^(args) {if args[0]==NULL wrap_tf(true) else wrap_tf([args[0] count] == 0)},
+			@"count": ^(args) {if args[0]==NULL @0 else @([args[0] count])},
 			@"apply": ^(args) {
 				objn_Typecheck($array($tfunction,MalFunc),args[0],false)
 				var fargs = [ON_MutableArray array]
@@ -133,15 +133,15 @@ function wrap_tf(val) {objn_Typecheck($tbool,val,false)
 			},
 			@"seq": ^(args) {
 				if list_Q(args[0]) {
-					[args[0] count]==0 && {return null}
+					[args[0] count]==0 && {return NULL}
 					return args[0]
 				} else if objn_Typecheck(MalVector,args[0],true) {
-					[args[0] count]==0 && {return null}
+					[args[0] count]==0 && {return NULL}
 					return [ON_Array arrayWithArray:args[0]]
 				} else if string_Q(args[0]) {
-					[args[0] length]==0 && {return null}
+					[args[0] length]==0 && {return NULL}
 					return [args[0] componentsSeparatedByString:@""]
-				} else if args[0] == null
+				} else if args[0] == NULL
 					return args[0]
 				else
 					$throw("seq: called on non-sequence")

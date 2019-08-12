@@ -13,7 +13,7 @@ function READ(str) {objn_Typecheck(ON_String,str,false)
 	return read_str(str)
 }
 
-function eval_ast(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
 	if [ast isKindOfClass:MalSymbol] {
 		return [env get:ast]
 	} else if [ast isKindOfClass:ON_Array] {
@@ -25,9 +25,8 @@ function eval_ast(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);
 	} else if [ast isKindOfClass:ON_Dictionary] {
 		var newDict = [ON_MutableDictionary dictionary]
 		
-		var k = [ast allKeys], v = [ast allValues]
-		for(var i = 0; i < [ast count]; i += 1)
-			newDict[k[i]] = EVAL(v[i], env)
+		for(var k, v in ast)
+			newDict[k] = EVAL(v, env)
 		
 		return [newDict ON_Dictionary]
 	} else {
@@ -35,7 +34,7 @@ function eval_ast(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);
 	}
 }
 
-function EVAL(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
 	if !list_Q(ast)
 		return eval_ast(ast, env)
 	
@@ -57,11 +56,11 @@ function EVAL(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn
 		return [eval_ast(_rest(ast), env) lastValue]
 	} else if [a0sym isEqualToString:@"if"] {
 		var cond = EVAL(ast[1], env)
-		if objn_Typecheck($array($tnull,MalFalse),cond,true) {
+		if objn_Typecheck($array(ON_Null,MalFalse),cond,true) {
 			if [ast count] > 3
 				return EVAL(ast[3], env)
 			else
-				return null
+				return NULL
 		} else
 			return EVAL(ast[2], env)
 	} else if [a0sym isEqualToString:@"fn*"] {
@@ -77,7 +76,7 @@ function EVAL(ast, env) {objn_Typecheck($array($tnull,ON_Object),ast,false);objn
 	}
 }
 
-function PRINT(exp) {objn_Typecheck($array($tnull,ON_Object),exp,false)
+function PRINT(exp) {objn_Typecheck($array(ON_Null,ON_Object),exp,false)
 	return _pr_str(exp, true)
 }
 
@@ -89,11 +88,8 @@ function main() {
 	var repl_env = [[Env make] init],
 		core_ns = [Core ns]
 	
-	var k = [core_ns allKeys],
-		v = [core_ns allValues]
-	
-	for(var i = 0; i < [core_ns count]; i += 1)
-		[repl_env set:[MalSymbol new:k[i]] val:v[i]]
+	for(var k, v in core_ns)
+		[repl_env set:[MalSymbol new:k] val:v]
 	
 	REP(@"(def! not (fn* (a) (if a false true)))", repl_env)
 	

@@ -1,5 +1,5 @@
 function _pr_str(obj, print_readably) {objn_Typecheck($tbool,print_readably,false)
-	if obj == null
+	if o == NULL
 		return @"nil"
 	else if objn_Typecheck(MalTrue,obj,true)
 		return @"true"
