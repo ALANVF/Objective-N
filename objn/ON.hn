@@ -9,6 +9,13 @@
 	- __string
 @end
 
+@interface ON_Null : ON_Object
+	- ON_String
+	
+	- __bool
+	- __string
+@end
+
 @interface ON_Integer : ON_Object
 	@property raw (read) = 0;
 	
@@ -225,8 +232,9 @@
 	
 	- subarrayWithRange:range
 	
-	//- ON_Array
-	//- ON_Enumerator
+	- ON_Array
+	- ON_Enumerator
+	- ON_Enumerator2
 	- ON_String
 	
 	- __get:index
@@ -303,6 +311,8 @@
 	
 	- isEqualToDictionary:dict
 	
+	- ON_Enumerator
+	- ON_Enumerator2
 	- ON_String
 	
 	- __get:key
@@ -370,7 +380,7 @@
 	- intersectionRange:range
 	
 	- ON_String
-	//- ON_Enumerator
+	- ON_Enumerator
 	- ON_Array
 	
 	- __bool
@@ -383,4 +393,15 @@
 	- initWithValues:array
 	
 	- nextValue
+@end
+
+@interface ON_ProcessInfo : ON_Object
+	- arguments
+	//- environment
+	//- hostName
+	- operatingSystem
+	- operatingSystemName
+	- processIdentifier
+	//- processName
+	//- setProcessName
 @end

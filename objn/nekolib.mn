@@ -67,11 +67,43 @@ var unicode_lower = $loader.loadprim("std@unicode_lower", 2),
 {
 var get_env = $loader.loadprim("std@get_env", 1),
 	put_env = $loader.loadprim("std@put_env", 2),
+	
+	set_time_locale = $loader.loadprim("std@set_time_locale", 1),
+	
 	get_cwd = $loader.loadprim("std@get_cwd", 0),
 	set_cwd = $loader.loadprim("std@set_cwd", 1),
+	
+	sys_sleep = $loader.loadprim("std@sys_sleep", 1),
+	
 	sys_command = $loader.loadprim("std@sys_command", 1),
+	sys_exit = $loader.loadprim("std@sys_exit", 1),
+	
+	sys_string = $loader.loadprim("std@sys_string", 0),
+	sys_is64 = $loader.loadprim("std@sys_is64", 0),
+	sys_stat = $loader.loadprim("std@sys_stat", 1),
+	
+	sys_time = $loader.loadprim("std@sys_time", 0),
+	sys_cpu_time = $loader.loadprim("std@sys_cpu_time", 0),
+	sys_thread_cpu_time = $loader.loadprim("std@sys_thread_cpu_time", 0),
+	
 	sys_env = $loader.loadprim("std@sys_env", 0),
-	sys_getch = $loader.loadprim("std@sys_getch", 1)
+	
+	sys_create_dir = $loader.loadprim("std@sys_create_dir", 2),
+	sys_remove_dir = $loader.loadprim("std@sys_remove_dir", 1),
+	sys_read_dir = $loader.loadprim("std@sys_read_dir", 1),
+	
+	sys_exists = $loader.loadprim("std@sys_exists", 1),
+	sys_rename = $loader.loadprim("std@sys_rename", 2),
+	sys_file_type = $loader.loadprim("std@sys_file_type", 1),
+	
+	sys_exe_path = $loader.loadprim("std@sys_exe_path", 0),
+	
+	sys_getch = $loader.loadprim("std@sys_getch", 1),
+	
+	sys_get_pid = $loader.loadprim("std@sys_get_pid", 0),
+	
+	win_env_changed = $loader.loadprim("std@win_env_changed", 0)
+	
 
 @implementation NL_sys
 	+ get_env:name {
@@ -81,6 +113,10 @@ var get_env = $loader.loadprim("std@get_env", 1),
 		put_env(name, value)
 	}
 	
+	+ set_time_locale:value {
+		set_time_locale(value)
+	}
+	
 	+ get_cwd {
 		return get_cwd()
 	}
@@ -88,16 +124,75 @@ var get_env = $loader.loadprim("std@get_env", 1),
 		set_cwd(cwd)
 	}
 	
+	+ sleep:time {
+		sys_sleep(time)
+	}
+	
 	+ command:cmd {
 		return sys_command(cmd)
+	}
+	+ exit:code {
+		sys_exit(code)
+	}
+	
+	+ string {
+		return sys_string()
+	}
+	+ is64 {
+		return sys_is64()
+	}
+	+ stat:file {
+		return sys_stat(file)
+	}
+	
+	+ time {
+		return sys_time()
+	}
+	+ cpu_time {
+		return sys_cpu_time()
+	}
+	+ thread_cpu_time {
+		return sys_thread_cpu_time()
 	}
 	
 	+ env {
 		return sys_env()
 	}
 	
+	+ create_dir:path mode:mode {
+		sys_create_dir(path, mode)
+	}
+	+ remove_dir:path {
+		sys_remove_dir(path)
+	}
+	+ read_dir:path {
+		return sys_read_dir(path)
+	}
+	
+	+ exists:item {
+		return sys_exists(item)
+	}
+	+ rename:item to:name {
+		sys_rename(item, name)
+	}
+	+ file_type:path {
+		return sys_file_type(path)
+	}
+	
+	+ exe_path {
+		return sys_exe_path()
+	}
+	
 	+ getch:echo {
 		return sys_getch(echo)
+	}
+	
+	+ get_pid {
+		return sys_get_pid()
+	}
+	
+	+ win_env_changed {
+		return win_env_changed()
 	}
 @end
 }
@@ -135,7 +230,8 @@ var process_run = $loader.loadprim("std@process_run", 2),
 	process_stdin_close = $loader.loadprim("std@process_stdin_close", 1),
 	process_exit = $loader.loadprim("std@process_exit", 1),
 	process_pid = $loader.loadprim("std@process_pid", 1),
-	process_close = $loader.loadprim("std@process_close", 1)
+	process_close = $loader.loadprim("std@process_close", 1),
+	process_kill = $loader.loadprim("std@process_kill", 1)
 
 @implementation NL_process
 	+ run:cmd args:args {
@@ -165,6 +261,112 @@ var process_run = $loader.loadprim("std@process_run", 2),
 	}
 	+ close:proc {
 		process_close(proc)
+	}
+	+ kill:proc {
+		process_kill(proc)
+	}
+@end
+}
+
+{
+var
+	thread_create = $loader.loadprim("std@thread_create", 2),
+	thread_current = $loader.loadprim("std@thread_current", 0),
+	thread_send = $loader.loadprim("std@thread_send", 2),
+	thread_read_message = $loader.loadprim("std@thread_read_message", 1),
+	thread_stack = $loader.loadprim("std@thread_stack", 1)
+
+@interface NL_thread : ON_Object
+	+ create:fun param:p {
+		return thread_create(fun, p)
+	}
+	+ current {
+		return thread_current()
+	}
+	+ send:thread message:msg {
+		thread_send(thread, msg)
+	}
+	+ read:block {
+		thread_read_message(block)
+	}
+	+ stack:thread { // do NOT use this on the current thread
+		return thread_stack(thread)
+	}
+@end
+
+var
+	lock_create = $loader.loadprim("std@lock_create", 0),
+	lock_wait = $loader.loadprim("std@lock_wait", 2),
+	lock_release = $loader.loadprim("std@lock_release", 1)
+
+@interface NL_lock : ON_Object
+	+ create {
+		return lock_create()
+	}
+	+ release:lock {
+		return lock_release(lock)
+	}
+	+ wait:lock timeout:time {
+		return lock_wait(lock, time)
+	}
+@end
+
+var
+	tls_create = $loader.loadprim("std@tls_create", 0),
+	tls_get = $loader.loadprim("std@tls_get", 1),
+	tls_set = $loader.loadprim("std@tls_set", 2)
+
+@interface NL_tls : ON_Object
+	+ create {
+		return tls_create()
+	}
+	+ get:tls {
+		return tls_get(tls)
+	}
+	+ set:tls to:val {
+		tls_set(tls, val)
+	}
+@end
+
+var
+	mutex_create = $loader.loadprim("std@mutex_create", 0),
+	mutex_acquire = $loader.loadprim("std@mutex_acquire", 1),
+	mutex_try = $loader.loadprim("std@mutex_try", 1),
+	mutex_release = $loader.loadprim("std@mutex_release", 1)
+
+@interface NL_mutex : ON_Object
+	+ create {
+		return mutex_create()
+	}
+	+ acquire:mutex {
+		mutex_acquire(mutex)
+	}
+	+ try:mutex {
+		return mutex_try(mutex)
+	}
+	+ release:mutex {
+		mutex_release(mutex)
+	}
+@end
+
+var
+	deque_create = $loader.loadprim("std@deque_create", 0),
+	deque_add = $loader.loadprim("std@deque_add", 2),
+	deque_push = $loader.loadprim("std@deque_push", 2),
+	deque_pop = $loader.loadprim("std@deque_pop", 2)
+
+@interface NL_deque : ON_Object
+	+ create {
+		return deque_create()
+	}
+	+ add:deque message:msg {
+		deque_add(deque, msg)
+	}
+	+ push:deque message:msg {
+		deque_push(deque, msg)
+	}
+	+ pop:deque block:block {
+		return deque_pop(deque, block)
 	}
 @end
 }

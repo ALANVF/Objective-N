@@ -21,14 +21,41 @@
 	+ get_env:name
 	+ set_env:name to:value
 	
+	+ set_time_locale:value
+	
 	+ get_cwd
 	+ set_cwd:cwd
 	
+	+ sleep:time
+	
 	+ command:cmd
+	+ exit:code
+	
+	+ string
+	+ is64
+	+ stat:file
+	
+	+ time
+	+ cpu_time
+	+ thread_cpu_time
 	
 	+ env
 	
+	+ create_dir:path mode:mode
+	+ remove_dir:path
+	+ read_dir:path
+	
+	+ exists:item
+	+ rename:item to:name
+	+ file_type:path
+	
+	+ exe_path
+	
 	+ getch:echo
+	
+	+ get_pid
+	
+	+ win_env_changed
 @end
 
 @interface NL_file : ON_Object
@@ -52,8 +79,45 @@
 	+ exit:proc
 	+ pid:proc
 	+ close:proc
+	+ kill:proc
 @end
 
+// threads
+@interface NL_thread : ON_Object
+	+ create:fun param:p
+	+ current
+	+ send:thread message:msg
+	+ read:block
+	+ stack:thread
+@end
+
+@interface NL_lock : ON_Object
+	+ create
+	+ release:lock
+	+ wait:lock timeout:time
+@end
+
+@interface NL_tls : ON_Object
+	+ create
+	+ get:tls
+	+ set:tls to:val
+@end
+
+@interface NL_mutex : ON_Object
+	+ create
+	+ acquire:mutex
+	+ try:mutex
+	+ release:mutex
+@end
+
+@interface NL_deque : ON_Object
+	+ create
+	+ add:deque message:msg
+	+ push:deque message:msg
+	+ pop:deque block:block
+@end
+
+// regex
 @interface NL_regexp : ON_Object
 	@property rx (read)
 	

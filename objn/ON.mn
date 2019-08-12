@@ -1,7 +1,9 @@
 #import "../objn/nekolib.mn"
 #import "../objn/ON.hn"
 
+{var _ = [ON_Nil new]
 @implementation ON_Nil
+	+ make {return _} // small hack
 	- ON_String {return @"nil"}
 	
 	- __bool {
@@ -11,6 +13,17 @@
 		return "nil"
 	}
 @end
+}
+
+{var _ = [ON_Null new]
+@implementation ON_Null
+	+ make {return _} // small hack
+	- ON_String {@"NULL"}
+	
+	- __bool {false}
+	- __string {"NULL"}
+@end
+}
 
 @implementation ON_Integer
 	+ integerWithNekoInteger:int {
@@ -467,7 +480,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return [[this make] _initWithCodepoints:newline]
 	}
 	//+ nonBaseCharacterSet
-	//+ punctuationCharacterSet
+	+ punctuationCharacterSet {[this symbolCharacterSet]}
 	+ symbolCharacterSet {
 		return [[this make] _initWithCodepoints:symbol]
 	}
@@ -618,9 +631,9 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 			this->raw[indexes[i]] = values[i]
 	}
 	
-	- valueEnumerator {return [[ON_Enumerator make] initWithValues:$acopy(this->raw)]}
+	- valueEnumerator {return [[ON_Enumerator make] initWithValues:this->raw]}
 	- reverseValueEnumerator {
-		this->count<2 && {return [[ON_Enumerator make] initWithValues:$acopy(this->raw)]}
+		this->count<2 && {return [[ON_Enumerator make] initWithValues:this->raw]}
 		var out = $amake(this->count)
 		for(var i = 0; i < $asize(out); i += 1)
 			out[$asize(out)-i-1] = this->raw[i]
@@ -641,12 +654,10 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	- firstValueCommonWithArray:array {
 		(!this->count || ![array count]) && {return nil}
-		var a, al
-		if(this->count<=[array count]) {a = this->raw; al = [array raw]} else {a = [array raw]; al = this->raw}
-		for(var i = 0; i < $asize(al); i += 1)
-			for(var j = 0; j < $asize(a); j += 1)
-				if al[i] == a[j]
-					return al[i]
+		for(var i in this->raw)
+			for(var j in [array raw])
+				if i == j
+					return i
 		
 		return nil
 	}
@@ -674,6 +685,9 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return @($acopy($asub(this->raw, [range position], [range length])))
 	}
 	
+	- ON_Array {this}
+	- ON_Enumerator {[this valueEnumerator]}
+	- ON_Enumerator2 {@[[ON_MakeRange(0, this->count) ON_Enumerator], [this valueEnumerator]]}
 	- ON_String {
 		return [ON_String stringWithNekoString:$string(this->raw)]
 	}
@@ -793,8 +807,8 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return [[this allKeys] arrayWithFunction:^(k) {[_this valueForKey:k]}]
 	}
 	
-	//- keyEnumerator
-	//- valueEnumerator
+	- keyEnumerator {[[ON_Enumerator make] initWithValues:[[this allKeys] raw]]}
+	- valueEnumerator {[[ON_Enumerator make] initWithValues:[[this allValues] raw]]}
 	- enumerateKeysAndValuesUsingBlock:block {objn_Typecheck($tfunction, block, false)
 		var f = $objfields(this->raw)
 		switch $asize(f) {
@@ -838,17 +852,19 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return true
 	}
 	
+	- ON_Enumerator {[this keyEnumerator]}
+	- ON_Enumerator2 {@[[this keyEnumerator], [this valueEnumerator]]}
 	- ON_String {
 		return switch this->count {
 			case 0: @"@{ }"
 			case 1: @("@{ @\"" + $field($objfields(this->raw)[0]) + "\": " + $objget(this->raw, $objfields(this->raw)[0]) + " }")
 			default: {
-				var out = "@{ ", f = $objfields(this->raw)
-				for(var i = 0; i < $asize(f); i += 1)
-					if i == $asize(f)-1
-						out += "@\"" + $field(f[i]) + "\": " + $objget(this->raw, f[i])
+				var out = "@{ ", i = 0
+				for(var k, v in this->raw)
+					if (i += 1)-1 == [this count]
+						out += "@\"" + k + "\": " + $string(v)
 					else
-						out += "@\"" + $field(f[i]) + "\": " + $objget(this->raw, f[i]) + ", "
+						out += "@\"" + k + "\": " + $string(v) + ", "
 				
 				return @(out + " }")
 			}
@@ -863,13 +879,19 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 
 @implementation ON_MutableDictionary
 	- addEntriesFromDictionary:dict {objn_Typecheck(ON_Dictionary,dict,false)
-		var keys = [dict allKeys]
-		for(var i = 0; i < [keys count]; i += 1)
-			this[keys[i]] = dict[keys[i]]
+		for(var key in [dict allKeys])
+			this[key] = dict[key]
 	}
-	//- removeAllValues
-	//- removeValueForKey:key
-	//- removeValuesForKeys:keys
+	- removeAllValues {
+		this->raw = $new(null)
+	}
+	- removeValueForKey:key {
+		$objremove(this->raw, $hash($string(key)))
+	}
+	- removeValuesForKeys:keys {objn_Typecheck(ON_Array,keys,false)
+		for(var k in keys)
+			$objremove(this->raw, $hash($string(k)))
+	}
 	- setValue:value forKey:key {
 		$objset(this->raw, $hash($string(key)), value)
 	}
@@ -908,8 +930,28 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return this->position + this->length
 	}
 	
-	- unionRange:range {}
-	- intersectionRange:range {}
+	- unionRange:range {
+		var pos = if this->position <= [range position] this->position else [range position],
+			len = if [this max] <= [range max] [range max]-pos else [this max]-pos
+		
+		return ON_MakeRange(pos, len)
+	}
+	- intersectionRange:range {
+		var pos = if this->position <= [range position] [range position] else this->position,
+			len = if [this max] <= [range max] [this max]-pos else [range max]-pos
+		
+		return ON_MakeRange(pos, len)
+	}
+	
+	- ON_Array {
+		var out = $amake(this->length)
+		for(var i = this->position; i < [this max]; i += 1)
+			out[i - this->position] = i
+		
+		return @(out)
+	}
+	- ON_Enumerator {[[ON_Enumerator make] initWithValues:[[this ON_Array] raw]]}
+	- ON_String {@($string(this->position) + ".." + this->length)}
 	
 	- __bool {true}
 	- __string {
@@ -917,29 +959,41 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 @end
 
-
+@implementation ON_Enumerator
+	- initWithValues:array {objn_Typecheck($tarray,array,false)
+		this->allValues = $acopy(array)
+		return this
+	}
+	
+	- nextValue {
+		$asize(this->allValues)==0 && {return nil}
+		var out = this->allValues[0]
+		this->allValues = $asub(this->allValues, 1, $asize(this->allValues)-1)
+		return out
+	}
+@end
 
 function ON_Log(args...) {
-	for(var i = 0; i < $asize(args); i += 1) {
-		switch $typeof(args[i]) {
+	for(var arg in args) {
+		switch $typeof(arg) {
 			case $tobject: {
-				if $objfield(args[i], $hash("@@send")) {
-					if [args[i] class] == ON_String || [args[i] class] == ON_MutableString
-						$print("\"", [args[i] raw], "\"\n")
-					else if [args[i] respondsToSelector: @selector(ON_String)]
-						$print([args[i] ON_String], "\n")
+				if $objgetproto(arg) == $objgetproto(ON_Object) {
+					if [arg isKindOfClass:ON_String]
+						$print("\"", [arg raw], "\"\n")
+					else if [arg respondsToSelector: @selector(ON_String)]
+						$print([arg ON_String], "\n")
 					else
-						$print($string(args[i]), "\n")
+						$print($string(arg), "\n")
 				} else {
-					$print(args[i], "\n")
+					$print(arg, "\n")
 				}
 			}
 			
 			case $tstring:
-				$print("\"", args[i], "\"\n")
+				$print("\"", arg, "\"\n")
 			
 			default:
-				$print(args[i], "\n")
+				$print(arg, "\n")
 		}
 	}
 }
@@ -948,9 +1002,29 @@ function ON_MakeRange(pos, len) {
 	return [[ON_Range make] initAtPosition:pos withLength:len]
 }
 
+function ON_MakeEnumerator(v) {
+	switch $typeof(v) {
+		case $tarray: [[ON_Enumerator make] initWithValues:v]
+		case $tobject: if $objgetproto(v) != $objgetproto(ON_Object) [[ON_Dictionary dictionaryWithNekoObject:v] ON_Enumerator] else [v ON_Enumerator]
+		default: $throw("Cannot enumerate value `"+$string(v)+"`!")
+	}
+}
+function ON_MakeEnumerator2(v) {
+	switch $typeof(v) {
+		case $tarray: @[
+			[[ON_MakeRange(0, $asize(v)-1) ON_Array] ON_Enumerator],
+			[[ON_Enumerator make] initWithValues:v]
+		]
+		case $tobject: if $objgetproto(v) != $objgetproto(ON_Object) [[ON_Dictionary dictionaryWithNekoObject:v] ON_Enumerator2] else [v ON_Enumerator2]
+		default: $throw("Cannot double enumerate value `"+$string(v)+"`!")
+	}
+}
+
+
+
 function ON_BoxValue(val) {//todo: make objn bool type
 	return switch $typeof(val) {
-		case $tnull: nil
+		case $tnull: NULL
 		case $tint: [ON_Integer integerWithNekoInteger:val]
 		case $tfloat: [ON_Float floatWithNekoFloat:val]
 		case $tstring: [ON_String stringWithNekoString:val]
