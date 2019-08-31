@@ -4,14 +4,10 @@
 {var _ = [ON_Nil new]
 @implementation ON_Nil
 	+ make {return _} // small hack
-	- ON_String {return @"nil"}
+	- ON_String {@"nil"}
 	
-	- __bool {
-		return false
-	}
-	- __string {
-		return "nil"
-	}
+	- __bool {false}
+	- __string {"nil"}
 @end
 }
 
@@ -44,10 +40,13 @@
 	}
 	
 	- compare:value {
-		if $typeof(value) == $tobject
+		if objn_Typecheck(ON_Integer, value, true)
 			return $compare(this->raw, [value raw])
 		else
 			return $compare(this->raw, value)
+	}
+	- isEqual:value {
+		return [this compare:value] == 0
 	}
 	
 	- ON_Integer {
@@ -87,10 +86,13 @@
 	}
 	
 	- compare:value {
-		if $typeof(value) == $tobject
+		if objn_Typecheck(ON_Float, value, true)
 			return $compare(this->raw, [value raw])
 		else
 			return $compare(this->raw, value)
+	}
+	- isEqual:value {
+		return [this compare:value] == 0
 	}
 	
 	- ON_Integer {
@@ -317,6 +319,12 @@
 			return true
 		else
 			return false
+	}
+	- isEqual:value {
+		if objn_Typecheck(ON_String, value, true)
+			return [this isEqualToString:value]
+		else
+			return this == value
 	}
 	
 	- commonPrefixWithString:str {
@@ -652,6 +660,12 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		
 		return true
 	}
+	- isEqual:value {
+		if objn_Typecheck(ON_Array, value, true)
+			return [this isEqualToArray:value]
+		else
+			return this == value
+	}
 	- firstValueCommonWithArray:array {
 		(!this->count || ![array count]) && {return nil}
 		for(var i in this->raw)
@@ -836,7 +850,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	
 	- isEqualToDictionary:dict {
-		this->count==[dict count] && {return false}
+		this->count!=[dict count] && {return false}
 		
 		var obj1 = this->raw, obj2 = $objget(dict, $hash("@instance_vars")).raw
 		var obj1f = $objfields(obj1), obj2f = $objfields(obj2)
@@ -850,6 +864,12 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		}
 		
 		return true
+	}
+	- isEqual:value {
+		if objn_Typecheck(ON_Dictionary, value, true)
+			return [this isEqualToDictionary:value]
+		else
+			return this == value
 	}
 	
 	- ON_Enumerator {[this keyEnumerator]}

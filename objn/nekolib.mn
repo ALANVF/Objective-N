@@ -372,6 +372,21 @@ var
 }
 
 {
+var
+	std_serialize = $loader.loadprim("std@serialize", 1),
+	std_unserialize = $loader.loadprim("std@unserialize", 2)
+
+@implementation NL_serialize
+	+ serialize:obj {
+		return std_serialize(obj)
+	}
+	+ unserialize:str loader:loader {
+		return std_unserialize(str, loader)
+	}
+@end
+}
+
+{
 var regexp_new = $loader.loadprim("regexp@regexp_new", 1),
 	regexp_new_options = $loader.loadprim("regexp@regexp_new_options", 2),
 	regexp_match = $loader.loadprim("regexp@regexp_match", 4),

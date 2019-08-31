@@ -25,6 +25,7 @@
 	- initWithValue:value
 	
 	- compare:value
+	- isEqual:value
 	
 	- ON_Integer
 	- ON_Float
@@ -47,6 +48,7 @@
 	- initWithValue:value
 	
 	- compare:value
+	- isEqual:value
 	
 	- ON_Integer
 	- ON_Float
@@ -108,6 +110,7 @@
 	- hasSuffix:str
 	- hash
 	- isEqualToString:str
+	- isEqual:value
 	//- writeToFile:path
 	
 	- commonPrefixWithString:str
@@ -225,6 +228,7 @@
 	- indexOfObjectPassingTest:test //^(element, index, *stop)
 	
 	- isEqualToArray:array
+	- isEqual:value
 	- firstValueCommonWithArray:array
 	- makeValuesPerform:func
 	//- sortUsingFunction:func //^(el1, el2)
@@ -310,6 +314,7 @@
 	- hasKey:key
 	
 	- isEqualToDictionary:dict
+	- isEqual:value
 	
 	- ON_Enumerator
 	- ON_Enumerator2
@@ -374,6 +379,7 @@
 	
 	- containsLocation:value
 	- equalsRange:range
+	- isEqual:value
 	- max
 	
 	- unionRange:range
@@ -397,6 +403,7 @@
 
 @interface ON_ProcessInfo : ON_Object
 	- arguments
+	- argumentsForLoader:loader
 	//- environment
 	//- hostName
 	- operatingSystem

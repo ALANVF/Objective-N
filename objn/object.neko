@@ -28,6 +28,8 @@ var ON_Object = @class.new("ON_Object", null)
 	
 	ON_Object.@@add_instance_method(@SEL($array("performSelector"), $array("sel")))
 	
+	ON_Object.@@add_instance_method(@SEL($array("isEqual"), $array("value")))
+	
 	ON_Object.@@add_instance_method(@SEL($array("__string"), $array()))
 // @end
 
@@ -134,6 +136,10 @@ var ON_Object = @class.new("ON_Object", null)
 			return this.@@send(sel)
 		else
 			this.@@send(@SEL($array("doesNotRecognizeSelector"), $array(sel)))
+	})
+	
+	ON_Object.@@instance_method(@SEL($array("isEqual"), $array("value")), function(args) {var value=args.isEqual;
+		return this == value
 	})
 	
 	ON_Object.@@instance_method(@SEL($array("__string"), $array()), function() {
