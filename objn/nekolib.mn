@@ -276,7 +276,7 @@ var
 	thread_read_message = $loader.loadprim("std@thread_read_message", 1),
 	thread_stack = $loader.loadprim("std@thread_stack", 1)
 
-@interface NL_thread : ON_Object
+@implementation NL_thread
 	+ create:fun param:p {
 		return thread_create(fun, p)
 	}
@@ -299,7 +299,7 @@ var
 	lock_wait = $loader.loadprim("std@lock_wait", 2),
 	lock_release = $loader.loadprim("std@lock_release", 1)
 
-@interface NL_lock : ON_Object
+@implementation NL_lock
 	+ create {
 		return lock_create()
 	}
@@ -316,7 +316,7 @@ var
 	tls_get = $loader.loadprim("std@tls_get", 1),
 	tls_set = $loader.loadprim("std@tls_set", 2)
 
-@interface NL_tls : ON_Object
+@implementation NL_tls
 	+ create {
 		return tls_create()
 	}
@@ -334,7 +334,7 @@ var
 	mutex_try = $loader.loadprim("std@mutex_try", 1),
 	mutex_release = $loader.loadprim("std@mutex_release", 1)
 
-@interface NL_mutex : ON_Object
+@implementation NL_mutex
 	+ create {
 		return mutex_create()
 	}
@@ -355,7 +355,7 @@ var
 	deque_push = $loader.loadprim("std@deque_push", 2),
 	deque_pop = $loader.loadprim("std@deque_pop", 2)
 
-@interface NL_deque : ON_Object
+@implementation NL_deque
 	+ create {
 		return deque_create()
 	}
