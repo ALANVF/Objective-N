@@ -2,8 +2,7 @@
 #import "../tests/mal/malfunc.hn"
 
 @implementation MalFunc
-	- init:ast env:env params:params {
-		objn_Typecheck(ON_Array,ast,false);objn_Typecheck(Env,env,false);objn_Typecheck(ON_Array,params,false);
+	- init:(ON_Array)ast env:(Env)env params:(ON_Array)params {
 		this->ast = objn_Copy(ast)
 		this->env = objn_Copy(env)
 		this->params = objn_Copy(params)
@@ -12,7 +11,7 @@
 		return this
 	}
 	
-	- apply:args {objn_Typecheck(ON_Array,args,false);
+	- apply:(ON_Array)args {
 		return EVAL(this->ast, [Env fromBindings:this->env
 										   binds:this->params
 										   exprs:args])

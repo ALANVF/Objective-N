@@ -1,9 +1,7 @@
 #import "../tests/mal/types.hn"
 
 @implementation Env
-	- initWithBindings:outer binds:binds exprs:exprs {
-		objn_Typecheck($array(Env,ON_Nil), outer, false);objn_Typecheck(ON_Array, binds, false);objn_Typecheck(ON_Array, exprs, false)
-		
+	- initWithBindings:(Env | ON_Nil)outer binds:(ON_Array)binds exprs:(ON_Array)exprs {
 		this->outer = objn_Copy(outer)
 		this->data = [ON_MutableDictionary dictionary]
 		
@@ -44,12 +42,12 @@
 									  exprs:exprs]
 	}
 	
-	- set:key val:val {objn_Typecheck(MalSymbol, key, false)
+	- set:(MalSymbol)key val:val {
 		this->data[key] = val
 		return val
 	}
 	
-	- find:key {objn_Typecheck(MalSymbol, key, false)
+	- find:(MalSymbol)key {
 		if [this->data hasKey:key]
 			return this
 		else if this->outer
@@ -58,7 +56,7 @@
 			return nil
 	}
 	
-	- get:key {objn_Typecheck(MalSymbol, key, false)
+	- get:(MalSymbol)key {
 		var e = [this find:key]
 		if e
 			return [e data][key]
@@ -100,7 +98,7 @@ function _rest(obj) {objn_Typecheck(ON_Array, obj, false)
 // vectors
 
 @implementation MalVector
-	+ fromArray:arr {objn_Typecheck(ON_Array, arr, false)
+	+ fromArray:(ON_Array)arr {
 		return [[this make] initWithArray:arr copyItems:false]
 	}
 @end
