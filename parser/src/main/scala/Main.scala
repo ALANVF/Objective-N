@@ -6,22 +6,37 @@ import java.io._
 object Main extends App {
 	def argsToSEL(args: List[(Any, Any)]): String =
 		"@SEL($array(" + (args map {"\"" + _._1 + "\""} mkString ",") + "),$array(" + (args map {"\"" + _._2 + "\""} mkString ",") + "))"
-	
+
 	def argsToMessage(args: List[(Any, Any)]): String =
 		"@SEL($array(" + (args map {"\"" + _._1 + "\""} mkString ",") + "),$array(" + (args map {"" + _._2} mkString ",") + "))"
-	
+
 	def messageS(caller: Any, name: String): String =
 		s"$caller.@@send(@SEL(" + "$array(\"" + name + "\"),$array()))"
-	
+
 	def messageM(caller: Any, args: List[(Any, Any)]): String =
 		s"$caller.@@send(${argsToMessage(args)})"
-	
+		
 	class ONParser extends RegexParsers with PackratParsers {
 		def keyword:  Parser[Any] = "var|if|else|do|while|for|return|break|continue|switch|case|default|function|try|catch".r
 		def name:     Parser[Any] = "[a-zA-Z_]\\w*".r
 		def variable: Parser[Any] = not(neko_value | objn_value | keyword) ~> name
 		def builtin:  Parser[Any] = "\\$\\w+".r
 		
+		def validType: Parser[Any] =
+			"$tnull"     |
+			"$tint"      |
+			"$tfloat"    |
+			"$tbool"     |
+			"$tstring"   |
+			"$tobject"   |
+			"$tarray"    |
+			"$tfunction" |
+			"$tabstract" |
+			rep1sep(name, ".") ^^ {
+				case List(name) => name
+				case path => path.mkString(".")
+			}
+
 		def neko_value: Parser[Any] = (
 			raw""""(?:\\\\||\\"||[^"])*?"""".r
 				|
@@ -165,7 +180,7 @@ object Main extends App {
 				("+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "<<=" | ">>=" | "&=" | "|=" | "^=" | "&&=" | "||=") ~ op2
 			).? ^^ {
 				case l ~ None               => s"$l"
-				case l ~ Some(r: List[Any]) => l :: r mkString "="
+				case l ~ Some(r: List[Any]) => l :: r.mkString("=")
 				case l ~ Some(o ~ r)        => o match {
 					case "**=" => s"$l=@POW($l,$r)"
 					case "<<=" => s"$l=@SHL($l,$r)"
@@ -181,7 +196,7 @@ object Main extends App {
 		//expr:
 		lazy val if_expr: PackratParser[Any] =
 			("if" ~> expr) ~ statement ~ ("else" ~> statement).? ^^ {
-				case c ~ b1 ~ Some(b2) => s"if @BOOL($c) $b1 else $b2" /* make everything have $istrue() */
+				case c ~ b1 ~ Some(b2) => s"if @BOOL($c) $b1 else $b2"
 				case c ~ b1 ~ None     => s"if @BOOL($c) $b1"
 			}
 
@@ -203,6 +218,7 @@ object Main extends App {
 				case None     ~ None     ~ None     ~ b => s"while true $b"
 			}
 		
+		// TODO: Add break/continue functionality
 		def for_in_expr: Parser[Any] =
 			("for" ~ "(") ~> "var".? ~ name ~ ("," ~> name).? ~ ("in" ~> expr <~ ")") ~ statement ^^ {
 				case Some(_) ~ v1 ~ Some(v2) ~ e ~ b => s"""{var $v1,$v2,@__e=ON_MakeEnumerator2($e);while {$v2=${messageS("@__e[1]","nextValue")};$v1=${messageS("@__e[0]","nextValue")}}!=${messageS("ON_Nil","make")} $b}"""
@@ -220,7 +236,9 @@ object Main extends App {
 			("switch" ~> expr) ~ ("{" ~> (
 				("case" ~ expr <~ ":") ~ statement
 					|
-				("default" <~ ":") ~ statement
+				("default" <~ (":" | "=>")) ~ statement
+					|
+				expr ~ "=>" ~ statement
 					|
 				lineComment
 			).* <~ "}") ^^ {
@@ -230,6 +248,7 @@ object Main extends App {
 					b foreach {
 						case "case" ~ c ~ r => out += s"$c=>$r" + "\n"
 						case "default" ~ r  => out += s"default=>$r" + "\n"
+						case c ~ "=>" ~ r   => out += s"$c=>$r" + "\n"
 						case _              => ""
 					}
 					out + "}"
@@ -330,27 +349,49 @@ object Main extends App {
 					("+" | "-") ~ (
 						name
 							|||
-						((name <~ ":") ~ name ^^ {case l ~ r => (l, r)}).+
+						((name <~ ":") ~ ("(" ~> rep1sep(validType, "|") <~ ")").? ~ name ^^ {case l ~ t ~ r => (l, t, r)}).+
 					) ~ block
 						|
 					lineComment
 				).* <~ "@end"
 			) ^^ {
-				case n ~ /*None ~*/ List()            => ""
-				case n ~ /*None ~*/ (body: List[Any]) => {
+				case n ~ /*None ~*/ List() => ""
+				case n ~ /*None ~*/ body => {
 					var out = s"$n.@@implementation();"
-
+					
 					body foreach {
-						case "+" ~ (m: List[(Any, Any)] @unchecked) ~ b => {
-							out += s"$n.@@class_method(" + argsToSEL(m) + ", function(args) {var " + (m map {t => s"${t._2}" + "=$objget(args,$hash(\"" + t._1 + "\"))"} mkString ",") + ";\n" + b + "\n})\n"
+						case "+" ~ (m: List[(_, Option[List[_]], _)] @unchecked) ~ b => {
+							out += s"$n.@@class_method(" + argsToSEL(m map {case (l, _, r) => (l, r)}) + ", function(args) {"
+							out += m map {
+								case (l, None, r) =>
+									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));"
+								case (l, Some(List(t)), r) =>
+									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + s"objn_Typecheck($t, $r, false);"
+								case (l, Some(t), r) =>
+									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + "objn_Typecheck($array(" + t.mkString(",") + s"), $r, false);"
+							} mkString ","
+							out += ";\n"
+							out += b
+							out += "\n})\n"
 						}
 
 						case "+" ~ m ~ b => {
 							out += s"$n.@@class_method(" + "@SEL($array(\"" + m + "\"),$array()), function() {\n" + b + "\n})\n"
 						}
 
-						case "-" ~ (m: List[(Any, Any)] @unchecked) ~ b => {
-							out += s"$n.@@instance_method(" + argsToSEL(m) + ", function(args) {var " + (m map {t => s"${t._2}" + "=$objget(args,$hash(\"" + t._1 + "\"))"} mkString ",") + ";\n" + b + "\n})\n"
+						case "-" ~ (m: List[(_, Option[List[_]], _)] @unchecked) ~ b => {
+							out += s"$n.@@instance_method(" + argsToSEL(m map {case (l, _, r) => (l, r)}) + ", function(args) {"
+							out += m map {
+								case (l, None, r) =>
+									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));"
+								case (l, Some(List(t)), r) =>
+									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + s"objn_Typecheck($t, $r, false);"
+								case (l, Some(t), r) =>
+									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + "objn_Typecheck($array(" + t.mkString(",") + s"), $r, false);"
+							} mkString ","
+							out += ";\n"
+							out += b
+							out += "\n})\n"
 						}
 
 						case "-" ~ m ~ b => {
