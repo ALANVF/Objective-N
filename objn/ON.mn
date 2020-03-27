@@ -26,15 +26,14 @@
 		return [[this make] initWithValue:int]
 	}
 	
-	- init { //todo: remove default constructors since i added default values
+	- init { //todo: remove default constructors since I added default values
 		return this
 	}
-	- initWithValue:value {
+	- initWithValue:($tint | ON_Integer)value {
 		if $typeof(value) == $tint
 			this->raw = value
-		else if $typeof(value) == $tobject
-			if [value class] == ON_Integer
-				this->raw = [value raw]
+		else
+			this->raw = [value raw]
 		
 		return this
 	}
@@ -75,12 +74,11 @@
 	- init {
 		return this
 	}
-	- initWithValue:value {
+	- initWithValue:($tfloat | ON_Float)value {
 		if $typeof(value) == $tfloat
 			this->raw = value
-		else if $typeof(value) == $tobject
-			if [value class] == ON_Float
-				this->raw = [value raw]
+		else
+			this->raw = [value raw]
 		
 		return this
 	}
@@ -130,21 +128,18 @@
 	- init {
 		return this
 	}
-	- initWithLength:length {
+	- initWithLength:($tint)length {
 		this->raw = $smake(length)
 		
 		return this
 	}
-	- initWithNekoString:value {
-		if $typeof(value) == $tstring
-			this->raw = value
+	- initWithNekoString:($tstring)value {
+		this->raw = value
 		
 		return this
 	}
-	- initWithString:str {
-		if $typeof(str) == $tobject
-			if [str class] == ON_String
-				this->raw = $scopy([str raw])
+	- initWithString:(ON_String)str {
+		this->raw = $scopy([str raw])
 		
 		return this
 	}
@@ -172,7 +167,7 @@
 		// todo. seems kinda weird
 	}
 	
-	- componentsSeparatedByString:str {
+	- componentsSeparatedByString:($tstring | ON_String)str {
 		if $typeof(str) == $tobject
 			str = [str raw]
 		
@@ -403,10 +398,8 @@
 		return [[ON_MutableString make] initWithString:str]
 	}
 	
-	- initWithString:str {
-		if $typeof(str) == $tobject
-			if [str class] == ON_String || [str class] == ON_MutableString
-				this->raw = $scopy([str raw])
+	- initWithString:(ON_String | ON_MutableString)str {
+		this->raw = $scopy([str raw])
 		
 		return this
 	}
@@ -594,7 +587,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	- arrayByAddingValuesFromArray:array {
 		return [ON_Array arrayWithNekoArray:$aconcat($array(this->raw, [array raw]))]
 	}
-	- arrayWithFunction:func {objn_Typecheck($tfunction, func, false)
+	- arrayWithFunction:($tfunction)func {
 		var out = [ON_Array arrayWithArray:this
 								 copyItems:true]
 		switch $nargs(func) {
@@ -675,14 +668,14 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		
 		return nil
 	}
-	- makeValuesPerform:func {objn_Typecheck($tfunction, func, false)
+	- makeValuesPerform:($tfunction)func {
 		switch $nargs(func) {
 			case 1: for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i])
 			case 2: for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i], i)
 			default: $throw("invalid number arguments for mapping an array!")
 		}
 	}
-	- componentsJoinedByString:sep {objn_Typecheck($array($tstring, ON_String), sep, false)
+	- componentsJoinedByString:($tstring | ON_String)sep {
 		this->count || {return @""}
 		this->count==1 && {return @($string(this->raw[0]))}
 		sep = $string(sep)
@@ -691,7 +684,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return @(out)
 	}
 	
-	- subarrayWithRange:range {objn_Typecheck(ON_Range, range, false)
+	- subarrayWithRange:(ON_Range)range {
 		//([range position]>this->count||[range max]>this->count) || $throw("Range "+range+" out of bounds!")
 		[range length] || {return @[]}
 		[range length]==1 && {return @[this->raw[[range max]-1]]}
@@ -721,11 +714,11 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		this->raw = $aconcat($array(this->raw, $array(value)))
 		this->count += 1
 	}
-	- addValuesFromArray:array {objn_Typecheck(ON_Array,array,false)
+	- addValuesFromArray:(ON_Array)array {
 		this->raw = $aconcat($array(this->raw, $acopy([array raw])))
 		this->count += [array count]
 	}
-	- insertValue:value atIndex:index {objn_Typecheck($tint,index,false)
+	- insertValue:value atIndex:($tint)index {
 		if index < 0 || index > this->count
 			$throw("out of bounds!")
 		
@@ -823,7 +816,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	
 	- keyEnumerator {[[ON_Enumerator make] initWithValues:[[this allKeys] raw]]}
 	- valueEnumerator {[[ON_Enumerator make] initWithValues:[[this allValues] raw]]}
-	- enumerateKeysAndValuesUsingBlock:block {objn_Typecheck($tfunction, block, false)
+	- enumerateKeysAndValuesUsingBlock:($tfunction)block {
 		var f = $objfields(this->raw)
 		switch $asize(f) {
 			case 0: return null
@@ -898,7 +891,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 @end
 
 @implementation ON_MutableDictionary
-	- addEntriesFromDictionary:dict {objn_Typecheck(ON_Dictionary,dict,false)
+	- addEntriesFromDictionary:(ON_Dictionary)dict {
 		for(var key in [dict allKeys])
 			this[key] = dict[key]
 	}
@@ -908,7 +901,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	- removeValueForKey:key {
 		$objremove(this->raw, $hash($string(key)))
 	}
-	- removeValuesForKeys:keys {objn_Typecheck(ON_Array,keys,false)
+	- removeValuesForKeys:(ON_Array)keys {
 		for(var k in keys)
 			$objremove(this->raw, $hash($string(k)))
 	}
@@ -980,7 +973,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 @end
 
 @implementation ON_Enumerator
-	- initWithValues:array {objn_Typecheck($tarray,array,false)
+	- initWithValues:($tarray)array {
 		this->allValues = $acopy(array)
 		return this
 	}
