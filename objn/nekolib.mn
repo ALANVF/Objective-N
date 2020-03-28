@@ -14,10 +14,10 @@ var utf8_buf_alloc = $loader.loadprim("std@utf8_buf_alloc", 1),
 	utf8_compare = $loader.loadprim("std@utf8_compare", 2)
 
 @implementation NL_UTF8
-	+ buf_alloc:size {
+	+ buf_alloc:($tint)size {
 		return utf8_buf_alloc(size)
 	}
-	+ buf_add:buf char:char {
+	+ buf_add:buf char:($tint)char {
 		utf8_buf_add(buf, char)
 	}
 	+ buf_content:buf {
@@ -29,22 +29,22 @@ var utf8_buf_alloc = $loader.loadprim("std@utf8_buf_alloc", 1),
 	+ buf_size:buf {
 		return utf8_buf_size(buf)
 	}
-	+ validate:str {
+	+ validate:($tstring)str {
 		return utf8_validate(str)
 	}
-	+ length:str {
+	+ length:($tstring)str {
 		return utf8_length(str)
 	}
-	+ sub:str pos:pos len:len {
+	+ sub:($tstring)str pos:($tint)pos len:($tint)len {
 		return utf8_sub(str, pos, len)
 	}
-	+ get:str index:index {
+	+ get:($tstring)str index:($tint)index {
 		return utf8_get(str, index)
 	}
-	+ iter:str with:func {
+	+ iter:($tstring)str with:($tfunction)func {
 		utf8_iter(str, func)
 	}
-	+ compare:str1 with:str2 {
+	+ compare:($tstring)str1 with:($tstring)str2 {
 		return utf8_compare(str1, str2)
 	}
 @end
@@ -55,10 +55,10 @@ var unicode_lower = $loader.loadprim("std@unicode_lower", 2),
 	unicode_upper = $loader.loadprim("std@unicode_upper", 2)
 
 @implementation NL_unicode
-	+ lower:str enc:enc {
+	+ lower:($tstring)str enc:($tint)enc {
 		return unicode_lower(str, enc)
 	}
-	+ upper:str enc:enc {
+	+ upper:($tstring)str enc:($tint)enc {
 		return unicode_upper(str, enc)
 	}
 @end
@@ -106,32 +106,32 @@ var get_env = $loader.loadprim("std@get_env", 1),
 	
 
 @implementation NL_sys
-	+ get_env:name {
-		return get_env($string(name))
+	+ get_env:($tstring)name {
+		return get_env(name)
 	}
-	+ set_env:name to:value {
+	+ set_env:($tstring)name to:($tstring)value {
 		put_env(name, value)
 	}
 	
-	+ set_time_locale:value {
+	+ set_time_locale:($tstring)value {
 		set_time_locale(value)
 	}
 	
 	+ get_cwd {
 		return get_cwd()
 	}
-	+ set_cwd:cwd {
+	+ set_cwd:($tstring)cwd {
 		set_cwd(cwd)
 	}
 	
-	+ sleep:time {
+	+ sleep:($tint | $tfloat)time {
 		sys_sleep(time)
 	}
 	
-	+ command:cmd {
+	+ command:($tstring)cmd {
 		return sys_command(cmd)
 	}
-	+ exit:code {
+	+ exit:($tint)code {
 		sys_exit(code)
 	}
 	
@@ -141,7 +141,7 @@ var get_env = $loader.loadprim("std@get_env", 1),
 	+ is64 {
 		return sys_is64()
 	}
-	+ stat:file {
+	+ stat:($tstring)file {
 		return sys_stat(file)
 	}
 	
@@ -159,23 +159,23 @@ var get_env = $loader.loadprim("std@get_env", 1),
 		return sys_env()
 	}
 	
-	+ create_dir:path mode:mode {
+	+ create_dir:($tstring)path mode:($tint)mode {
 		sys_create_dir(path, mode)
 	}
-	+ remove_dir:path {
+	+ remove_dir:($tstring)path {
 		sys_remove_dir(path)
 	}
-	+ read_dir:path {
+	+ read_dir:($tstring)path {
 		return sys_read_dir(path)
 	}
 	
-	+ exists:item {
+	+ exists:($tstring)item {
 		return sys_exists(item)
 	}
-	+ rename:item to:name {
+	+ rename:($tstring)item to:($tstring)name {
 		sys_rename(item, name)
 	}
-	+ file_type:path {
+	+ file_type:($tstring)path {
 		return sys_file_type(path)
 	}
 	
@@ -183,7 +183,7 @@ var get_env = $loader.loadprim("std@get_env", 1),
 		return sys_exe_path()
 	}
 	
-	+ getch:echo {
+	+ getch:($tbool)echo {
 		return sys_getch(echo)
 	}
 	
@@ -205,10 +205,10 @@ var file_full_path = $loader.loadprim("std@file_full_path", 1),
 	file_stdin = $loader.loadprim("std@file_stdin", 0)
 
 @implementation NL_file
-	+ full_path:path {
+	+ full_path:($tstring)path {
 		return file_full_path(path)
 	}
-	+ contents:filename {
+	+ contents:($tstring)filename {
 		return file_contents(filename)
 	}
 	
@@ -234,19 +234,19 @@ var process_run = $loader.loadprim("std@process_run", 2),
 	process_kill = $loader.loadprim("std@process_kill", 1)
 
 @implementation NL_process
-	+ run:cmd args:args {
+	+ run:($tstring)cmd args:($tarray)args {
 		return process_run(cmd, args)
 	}
 	
 	// idk how this actually works
-	+ stdout_read:proc buf:str pos:pos len:len {
+	+ stdout_read:proc buf:($tstring)str pos:($tint)pos len:($tint)len {
 		return process_stdout_read(proc, str, pos, len)
 	}
-	+ stderr_read:proc buf:str pos:pos len:len {
+	+ stderr_read:proc buf:($tstring)str pos:($tint)pos len:($tint)len {
 		return process_stderr_read(proc, str, pos, len)
 	}
 	
-	+ stdin_write:proc buf:str pos:pos len:len {
+	+ stdin_write:proc buf:($tstring)str pos:($tint)pos len:($tint)len {
 		return process_stdin_write(proc, str, pos, len)
 	}
 	+ stdin_close:proc {
@@ -277,7 +277,7 @@ var
 	thread_stack = $loader.loadprim("std@thread_stack", 1)
 
 @implementation NL_thread
-	+ create:fun param:p {
+	+ create:($tfunction)fun param:p {
 		return thread_create(fun, p)
 	}
 	+ current {
@@ -286,7 +286,7 @@ var
 	+ send:thread message:msg {
 		thread_send(thread, msg)
 	}
-	+ read:block {
+	+ read:($tbool)block {
 		thread_read_message(block)
 	}
 	+ stack:thread { // do NOT use this on the current thread
@@ -306,7 +306,7 @@ var
 	+ release:lock {
 		return lock_release(lock)
 	}
-	+ wait:lock timeout:time {
+	+ wait:lock timeout:($tnull | $tint | $tfloat)time {
 		return lock_wait(lock, time)
 	}
 @end
@@ -365,7 +365,7 @@ var
 	+ push:deque message:msg {
 		deque_push(deque, msg)
 	}
-	+ pop:deque block:block {
+	+ pop:deque block:($tbool)block {
 		return deque_pop(deque, block)
 	}
 @end
@@ -380,7 +380,7 @@ var
 	+ serialize:obj {
 		return std_serialize(obj)
 	}
-	+ unserialize:str loader:loader {
+	+ unserialize:($tstring)str loader:loader {
 		return std_unserialize(str, loader)
 	}
 @end
@@ -404,33 +404,33 @@ var regexp_new = $loader.loadprim("regexp@regexp_new", 1),
 		return [[this make] init:rx options:options]
 	}
 	
-	- init:rx {
+	- init:($tstring)rx {
 		this->rx = regexp_new(rx)
 		
 		return this
 	}
-	- init:rx options:options {
+	- init:($tstring)rx options:($tstring)options {
 		this->rx = regexp_new_options(rx, options)
 		
 		return this
 	}
 	
-	- match:str pos:pos len:len {
+	- match:($tstring)str pos:($tint)pos len:($tint)len {
 		return regexp_match(this->rx, str, pos, len)
 	}
-	- replace:str1 with:str2 {
+	- replace:($tstring)str1 with:($tstring)str2 {
 		return regexp_replace(this->rx, str1, str2)
 	}
-	- replace_all:str1 with:str2 {
+	- replace_all:($tstring)str1 with:($tstring)str2 {
 		return regexp_replace_all(this->rx, str1, str2)
 	}
-	- replace_fun:str with:func {
+	- replace_fun:($tstring)str with:($tfunction)func {
 		return regexp_replace_fun(this->rx, str, func)
 	}
-	- matched:n {
+	- matched:($tint)n {
 		return regexp_matched(this->rx, n)
 	}
-	- matched_pos:n {
+	- matched_pos:($tint)n {
 		return regexp_matched_pos(this->rx, n)
 	}
 @end

@@ -147,20 +147,20 @@
 	- length {
 		return [NL_UTF8 length:this->raw]
 	}
-	- characterAtIndex:index {
+	- characterAtIndex:($tint)index {
 		if index < [NL_UTF8 length:this->raw]
 			return [NL_UTF8 sub:this->raw
 							pos:index
 							len:1]
 	}
-	- getCharactersInRange:range {
+	- getCharactersInRange:(ON_Range)range {
 		if [range position] >= 0 && [range max] < [NL_UTF8 length:this->raw]
 			return [NL_UTF8 sub:this->raw
 							pos:[range position]
 							len:[range length]]
 	}
 	
-	- stringByAppendingString:str {
+	- stringByAppendingString:(ON_String)str {
 		return [ON_String stringWithNekoString: this->raw + [str raw]]
 	}
 	- stringByPaddingToLength:len withString:str startingAtIndex:index {
@@ -207,7 +207,7 @@
 	//- componentsSeparatedByCharactersInSet:set
 	
 	//- stringByTrimmingCharactersInSet:set
-	- substringFromIndex:index {
+	- substringFromIndex:($tint)index {
 		switch index {
 			case 0:
 				return [this copy]
@@ -221,7 +221,7 @@
 																len:[NL_UTF8 length:this->raw]-index]]
 		}
 	}
-	- substringWithRange:range {
+	- substringWithRange:(ON_Range)range {
 		if [range length] == 0
 			return @""
 		else if [range position] == 0 && [range length] == [this length]
@@ -232,7 +232,7 @@
 															len:[range length]]]
 		}
 	}
-	- substringToIndex:index {
+	- substringToIndex:($tint)index {
 		switch index {
 			case 0:
 				return @""
@@ -247,13 +247,13 @@
 		}
 	}
 	
-	- containsString:str {
+	- containsString:(ON_String)str {
 		if $sfind(this->raw, 0, [str raw]) == null
 			return false
 		else
 			return true
 	}
-	- containsString:str range:range {
+	- containsString:(ON_String)str range:(ON_Range)range {
 		var p = $sfind(this->raw, 0, [str raw])
 		if p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
 			return false
@@ -261,14 +261,14 @@
 			return true
 	}
 	
-	- rangeOfString:str {
+	- rangeOfString:(ON_String)str {
 		var p = $sfind(this->raw, 0, [str raw])
 		if p == null
 			return ON_MakeRange(-1, 0)
 		else
 			return ON_MakeRange(p, [str length])
 	}
-	- rangeOfString:str range:range {
+	- rangeOfString:(ON_String)str range:(ON_Range)range {
 		var p = $sfind(this->raw, 0, [str raw])
 		if p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
 			return ON_MakeRange(-1, 0)
@@ -277,18 +277,18 @@
 	}
 	
 	//todo: add range options
-	- compare:str {
+	- compare:(ON_String)str {
 		return [NL_UTF8 compare:this->raw
 						   with:[str raw]]
 	}
-	- compare:str caseInsensitive:ci {
+	- compare:(ON_String)str caseInsensitive:($tbool)ci {
 		if ci
 			return [this compare:str]
 		else
 			return [[this lowercaseString] compare:[str lowercaseString]]
 	}
 	
-	- hasPrefix:str {
+	- hasPrefix:(ON_String)str {
 		if [str length] > [this length]
 			return false
 		
@@ -297,7 +297,7 @@
 		else
 			return false
 	}
-	- hasSuffix:str {
+	- hasSuffix:(ON_String)str {
 		if [str length] > [this length]
 			return false
 		
@@ -309,7 +309,7 @@
 	- hash {
 		return $hash(this->raw)
 	}
-	- isEqualToString:str {
+	- isEqualToString:(ON_String)str {
 		if [NL_UTF8 compare:this->raw with:[str raw]] == 0
 			return true
 		else
@@ -322,10 +322,10 @@
 			return this == value
 	}
 	
-	- commonPrefixWithString:str {
+	- commonPrefixWithString:(ON_String)str {
 		return [this commonPrefixWithString:str caseInsensitive:false]
 	}
-	- commonPrefixWithString:str caseInsensitive:ci {
+	- commonPrefixWithString:(ON_String)str caseInsensitive:($tbool)ci {
 		if this->raw == "" || [str raw] == "" {
 			return @""
 		} else if [this length] == 1 || [str length] == 1 {
@@ -404,10 +404,10 @@
 		return this
 	}
 	
-	- appendString:str {
+	- appendString:(ON_String)str {
 		this->raw += [str raw]
 	}
-	- deleteCharactersInRange:range {
+	- deleteCharactersInRange:(ON_Range)range {
 		if [range length] != 0 && [range position] >= 0 && [range length] <= [this length] {
 			if [range position] == 0 && [range length] == [this length] {
 				this->raw = ""
@@ -422,7 +422,7 @@
 			}
 		}
 	}
-	- insertString:str atIndex:index {
+	- insertString:(ON_String)str atIndex:($tint)index {
 		if index > [this length]
 			$throw("some out-of-bounds error")
 		else if index == [this length]
@@ -432,13 +432,13 @@
 		else
 			this->raw = [NL_UTF8 sub:this->raw pos:0 len:index] + [str raw] + [NL_UTF8 sub:this->raw pos:index len:[this length]-index]
 	}
-	- replaceCharactersInRange:range withString:rep {
+	- replaceCharactersInRange:(ON_Range)range withString:(ON_String)rep {
 		[this deleteCharactersInRange:range]
 		[this insertString:rep
 				   atIndex:[range position]]
 	}
 	//- replaceOccurrencesOfString:str withString:rep options:options range:range
-	- setString:str {
+	- setString:(ON_String)str {
 		this->raw = $scopy([str raw])
 	}
 	
@@ -494,7 +494,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	
 	// the way ranges work in objc is weird, so idk if all of this will be accurate.
-	+ characterSetWithCharactersInString:str {
+	+ characterSetWithCharactersInString:(ON_String)str {
 		var _ = [this make], a = $amake([str length])
 		for(var i = 0; i < [str length]; i += 1)
 			a[i] = [NL_UTF8 get:[str raw] index:i]
@@ -502,13 +502,13 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		$objget(_, $hash("@instance_vars")).codes = a
 		return _
 	}
-	+ characterSetWithRange:range {
+	+ characterSetWithRange:(ON_Range)range {
 		var _ = [this make]
 		$objget(_, $hash("@instance_vars")).codes = {var a=$amake([range length]+1);for(var i=0;i<=[range length];i+=1)a[i]=[range position]+i;a}
 		return _
 	}
 	
-	- _initWithCodepoints:codes {
+	- _initWithCodepoints:($tarray)codes {
 		this->codes = codes
 		
 		return this
@@ -516,14 +516,14 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	
 	//+ invertedSet
 	
-	- characterIsMember:char {
+	- characterIsMember:($tint)char {
 		for(var i = 0; i < $asize(this->codes); i += 1)
 			if this->codes[i] == char
 				return true
 		
 		return false
 	}
-	- isSupersetOfSet:set {
+	- isSupersetOfSet:(ON_CharacterSet)set {
 		var codes = $objget(set, $hash("@instance_vars")).codes
 		for(var i = 0; i < $asize(codes); i += 1) {
 			var b = false
@@ -567,14 +567,13 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		
 		return this
 	}
-	- initWithValues:values {
-		// I'm too lazy to add type constraints rn
+	- initWithValues:($tarray)values {
 		this->raw = values
 		this->count = $asize(values)
 		
 		return this
 	}
-	- initWithArray:array copyItems:copy {
+	- initWithArray:(ON_Array)array copyItems:($tbool)copy {
 		this->raw = if copy $acopy([array raw]) else [array raw]
 		this->count = [array count]
 		
@@ -584,7 +583,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	- arrayByAddingValue:value {
 		return [ON_Array arrayWithNekoArray:$aconcat($array(this->raw, $array(value)))]
 	}
-	- arrayByAddingValuesFromArray:array {
+	- arrayByAddingValuesFromArray:(ON_Array)array {
 		return [ON_Array arrayWithNekoArray:$aconcat($array(this->raw, [array raw]))]
 	}
 	- arrayWithFunction:($tfunction)func {
@@ -611,13 +610,13 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	- lastValue {
 		return this->raw[this->count - 1]
 	}
-	- valueAtIndex:index {
+	- valueAtIndex:($tint)index {
 		return this->raw[index]
 	}
-	- setValue:value atIndex:index {
+	- setValue:value atIndex:($tint)index {
 		this->raw[index] = value
 	}
-	- valuesAtIndexes:indexes {
+	- valuesAtIndexes:(ON_Array)indexes {
 		var out = $acopy([indexes raw])
 		
 		for(var i = 0; i < $asize(out); i += 1)
@@ -625,7 +624,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		
 		return @(out)
 	}
-	- setValues:values atIndexes:indexes {
+	- setValues:(ON_Array)values atIndexes:(ON_Array)indexes {
 		// make sure [values count] == [indexes count]...
 		
 		for(var i = 0; i < [indexes count]; i += 1)
@@ -641,7 +640,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return [[ON_Enumerator make] initWithValues:out]
 	}
 	
-	- isEqualToArray:array {
+	- isEqualToArray:(ON_Array)array {
 		this->count != [array count] && {return false}
 		this->raw == [array raw] && {return true}
 		
@@ -659,7 +658,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		else
 			return this == value
 	}
-	- firstValueCommonWithArray:array {
+	- firstValueCommonWithArray:(ON_Array)array {
 		(!this->count || ![array count]) && {return nil}
 		for(var i in this->raw)
 			for(var j in [array raw])
@@ -749,12 +748,12 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	+ dictionaryWithNekoObject:obj {[[this make] initWithNekoObject:obj]}
 	+ dictionaryWithNekoObject:obj copyItems:copy {[[this make] initWithNekoObject:obj copyItems:copy]}
 	
-	- initWithDictionary:dict {
+	- initWithDictionary:(ON_Dictionary)dict {
 		this->raw = $new($objget(dict, $hash("@instance_vars")).raw)
 		this->count = $asize($objfields(this->raw))
 		return this
 	}
-	- initWithDictionary:dict copyItems:copy {
+	- initWithDictionary:(ON_Dictionary)dict copyItems:($tbool)copy {
 		if copy
 			[this initWithDictionary:dict]
 		else {
@@ -763,12 +762,12 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		}
 		return this
 	}
-	- initWithValue:value forKey:key {
+	- initWithValue:value forKey:(ON_String)key {
 		$objset(this->raw, [key hash], value)
 		this->count = 1
 		return this
 	}
-	- initWithValues:values forKeys:keys {
+	- initWithValues:($tarray)values forKeys:($tarray)keys {
 		if $asize(values) != $asize(keys)
 			$throw("length of keys and values must be equal!")
 		
@@ -779,7 +778,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		
 		return this
 	}
-	- initWithValuesAndKeys:args {
+	- initWithValuesAndKeys:($tarray)args {
 		if $asize(args) % 2 != 0
 			$throw("number of keys and values must be equal!")
 		
@@ -791,26 +790,24 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return this
 	}
 	- initWithNekoObject:obj {[this initWithNekoObject:obj copyItems:false]}
-	- initWithNekoObject:obj copyItems:copy {
+	- initWithNekoObject:($tobject)obj copyItems:($tbool)copy {
 		this->raw = if copy $new(obj) else obj
 		this->count = $asize($objfields(obj))
 		return this
 	}
 	
 	- allKeys {
-		//return [[ON_Array arrayWithValues:$objfields(this->raw)] arrayWithFunction:^(val) {return [ON_String stringWithNekoString:$field(val)]}]
 		return [@($objfields(this->raw)) arrayWithFunction:^(v) {@($field(v))}]
 	}
 	- allKeysForValue:value {
 		var out = @[], f = $objfields(this->raw)
 		for(var i = 0; i < this->count; i += 1)
 			if value == $objget(this->raw, f[i])
-				out = [out arrayByAddingValue:$field(f[i])]
+				out = [out arrayByAddingValue:$field(f[i])] // shouldn't this be ON_String?
 		
 		return out
 	}
 	- allValues {var _this = this
-		//return [[ON_Array arrayWithValues:$objfields(this->raw)] arrayWithFunction:^(val) {return $objget(this->raw, val)}]
 		return [[this allKeys] arrayWithFunction:^(k) {[_this valueForKey:k]}]
 	}
 	
@@ -827,11 +824,11 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	
 	//- keysOfEntriesPassingTest:func //^(key, value)
 	
-	- valueForKey:key {
+	- valueForKey:($tstring | ON_String)key {
 		key = $string(key)
 		return $objget(this->raw, $hash(key))
 	}
-	- setValue:value forKey:key {
+	- setValue:value forKey:($tstring | ON_String)key {
 		key = $string(key)
 		if !$objfield(this->raw, $hash(key))
 			$throw("Cannot add new keys to an immutable dictionary!")
@@ -842,7 +839,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return $objfield(this->raw, $hash($string(key)))
 	}
 	
-	- isEqualToDictionary:dict {
+	- isEqualToDictionary:(ON_Dictionary)dict {
 		this->count!=[dict count] && {return false}
 		
 		var obj1 = this->raw, obj2 = $objget(dict, $hash("@instance_vars")).raw
@@ -898,14 +895,14 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	- removeAllValues {
 		this->raw = $new(null)
 	}
-	- removeValueForKey:key {
+	- removeValueForKey:($tstring | ON_String)key {
 		$objremove(this->raw, $hash($string(key)))
 	}
 	- removeValuesForKeys:(ON_Array)keys {
 		for(var k in keys)
 			$objremove(this->raw, $hash($string(k)))
 	}
-	- setValue:value forKey:key {
+	- setValue:value forKey:($tstring | ON_String)key {
 		$objset(this->raw, $hash($string(key)), value)
 	}
 	//- setDictionary:dict
@@ -920,20 +917,20 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		
 		return this
 	}
-	- initAtPosition:pos withLength:len {
+	- initAtPosition:($tint)pos withLength:($tint)len {
 		this->position = pos
 		this->length = len
 		
 		return this
 	}
 	
-	- containsLocation:value {
+	- containsLocation:($tint)value {
 		if value >= this->position && value < this->position + this->length
 			return true
 		else
 			return false
 	}
-	- equalsRange:range {
+	- equalsRange:(ON_Range)range {
 		if this->position == [range position] && this->length == [range length]
 			return true
 		else
@@ -943,13 +940,13 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		return this->position + this->length
 	}
 	
-	- unionRange:range {
+	- unionRange:(ON_Range)range {
 		var pos = if this->position <= [range position] this->position else [range position],
 			len = if [this max] <= [range max] [range max]-pos else [this max]-pos
 		
 		return ON_MakeRange(pos, len)
 	}
-	- intersectionRange:range {
+	- intersectionRange:(ON_Range)range {
 		var pos = if this->position <= [range position] [range position] else this->position,
 			len = if [this max] <= [range max] [this max]-pos else [range max]-pos
 		
