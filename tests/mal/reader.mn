@@ -9,7 +9,7 @@
 @end
 
 @implementation Reader
-	- initWithTokens:toks {objn_Typecheck(ON_Array,toks,false)
+	- initWithTokens:(ON_Array)toks {
 		this->tokens = toks
 		this->position = 0
 		return this
