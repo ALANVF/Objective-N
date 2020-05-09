@@ -22,14 +22,14 @@
 	
 	- initWithOuter:outer {
 		return [this initWithBindings:outer
-								binds:@[]
-								exprs:@[]]
+		                        binds:@[]
+		                        exprs:@[]]
 	}
 	
 	- init {
 		return [this initWithBindings:nil
-								binds:@[]
-								exprs:@[]]
+		                        binds:@[]
+		                        exprs:@[]]
 	}
 	
 	+ fromOuter:outer {
@@ -38,8 +38,8 @@
 	
 	+ fromBindings:outer binds:binds exprs:exprs {
 		return [[Env make] initWithBindings:outer
-									  binds:binds
-									  exprs:exprs]
+		                              binds:binds
+		                              exprs:exprs]
 	}
 	
 	- set:(MalSymbol)key val:val {

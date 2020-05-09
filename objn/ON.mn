@@ -150,14 +150,14 @@
 	- characterAtIndex:($tint)index {
 		if index < [NL_UTF8 length:this->raw]
 			return [NL_UTF8 sub:this->raw
-							pos:index
-							len:1]
+			                pos:index
+			                len:1]
 	}
 	- getCharactersInRange:(ON_Range)range {
 		if [range position] >= 0 && [range max] < [NL_UTF8 length:this->raw]
 			return [NL_UTF8 sub:this->raw
-							pos:[range position]
-							len:[range length]]
+			                pos:[range position]
+			                len:[range length]]
 	}
 	
 	- stringByAppendingString:(ON_String)str {
@@ -217,8 +217,8 @@
 			
 			default:
 				return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
-																pos:index
-																len:[NL_UTF8 length:this->raw]-index]]
+				                                                pos:index
+				                                                len:[NL_UTF8 length:this->raw]-index]]
 		}
 	}
 	- substringWithRange:(ON_Range)range {
@@ -228,8 +228,8 @@
 			return [this copy]
 		else {
 			return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
-															pos:[range position]
-															len:[range length]]]
+			                                                pos:[range position]
+			                                                len:[range length]]]
 		}
 	}
 	- substringToIndex:($tint)index {
@@ -242,8 +242,8 @@
 			
 			default:
 				return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
-																pos:0
-																len:index]]
+				                                                pos:0
+				                                                len:index]]
 		}
 	}
 	
@@ -359,11 +359,11 @@
 	}
 	- lowercaseString {
 		return [ON_String stringWithNekoString:[NL_unicode lower:this->raw
-															 enc:1]]
+		                                                     enc:1]]
 	}
 	- uppercaseString {
 		return [ON_String stringWithNekoString:[NL_unicode upper:this->raw
-															 enc:1]]
+		                                                     enc:1]]
 	}
 	
 	- ON_Integer {
@@ -413,11 +413,11 @@
 				this->raw = ""
 			} else {
 				var l = [NL_UTF8 sub:this->raw
-								 pos:0
-								 len:[range position]],
-					r = [NL_UTF8 sub:this->raw
-								 pos:[range max]
-								 len:[this length]-[range max]]
+				                 pos:0
+				                 len:[range position]],
+				    r = [NL_UTF8 sub:this->raw
+				                 pos:[range max]
+				                 len:[this length]-[range max]]
 				this->raw = l + r
 			}
 		}
@@ -435,7 +435,7 @@
 	- replaceCharactersInRange:(ON_Range)range withString:(ON_String)rep {
 		[this deleteCharactersInRange:range]
 		[this insertString:rep
-				   atIndex:[range position]]
+		           atIndex:[range position]]
 	}
 	//- replaceOccurrencesOfString:str withString:rep options:options range:range
 	- setString:(ON_String)str {
@@ -552,7 +552,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	+ arrayWithArray:array copyItems:copy {
 		return [[this make] initWithArray:array
-								copyItems:copy]
+		                        copyItems:copy]
 	}
 	
 	- init {
@@ -588,7 +588,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	- arrayWithFunction:($tfunction)func {
 		var out = [ON_Array arrayWithArray:this
-								 copyItems:true]
+		                         copyItems:true]
 		switch $nargs(func) {
 			case 1: for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i])
 			case 2: for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i], i)

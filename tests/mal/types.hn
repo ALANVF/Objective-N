@@ -4,7 +4,6 @@
 	@property data (read) //ON_MutableDictionary
 	@property outer //Env
 	
-	//                 (Env)       @[]        @[]
 	- initWithBindings:outer binds:binds exprs:exprs
 	- initWithOuter:outer
 	- init

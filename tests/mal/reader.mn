@@ -43,7 +43,7 @@ function tokenize(str) {objn_Typecheck(ON_String,str,false)
 			_regex = [NL_regexp make]
 		
 		[regex replace_fun:_str
-					  with:^(rx) {
+				      with:^(rx) {
 			$objget(_regex, $hash("@instance_vars")).rx = rx
 			try [matches addValue:@[@([_regex matched:0]), @([_regex matched:1])]] catch _ {}
 			try [ranges addValue:@[[_regex matched_pos:0], [_regex matched_pos:1]]] catch _ {}

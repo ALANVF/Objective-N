@@ -38,7 +38,7 @@ object Main extends App {
 			}
 
 		def neko_value: Parser[Any] = (
-			raw""""(?:\\\\||\\"||[^"])*?"""".r
+			raw"""(?:"(?:\\\\||\\"||[^"])*?")""".r
 				|
 			"\\d+\\.\\d+".r
 				|
@@ -54,11 +54,11 @@ object Main extends App {
 		)
 
 		def objn_value: Parser[Any] = (
-			"nil" ^^^ messageS("ON_Nil", "new")
+			"nil" ^^^ messageS("ON_Nil", "make")
 				|
 			"NULL" ^^^ messageS("ON_Null", "make")
 				|
-			raw"""@"(?:\\\\||\\"||[^"])*?"""".r ^^ {v => messageM("ON_String", List(("stringWithNekoString", s"$v".tail)))}
+			raw"""(?:@"(?:\\\\||\\"||[^"])*?")""".r ^^ {v => messageM("ON_String", List(("stringWithNekoString", s"$v".tail)))}
 				|
 			"@\\d+\\.\\d+".r ^^ {v => messageM("ON_Float", List(("floatWithNekoFloat", s"$v".tail)))}
 				|
@@ -82,7 +82,7 @@ object Main extends App {
 		
 		def objn_box: Parser[Any] = "@(" ~> expr <~ ")" ^^ {"ON_BoxValue(" + _ + ")"}
 		
-		def func: Parser[Any] = ("^" ~> opt("(" ~> (repsep(name, ",") ||| (name <~ "...")) <~ ")") ~ block) ^^ {
+		def func: Parser[Any] = (("^" | "function") ~> opt("(" ~> (repsep(name, ",") ||| (name <~ "...")) <~ ")") ~ block) ^^ {
 			case None               ~ b => s"(function()$b)"
 			case Some(List())       ~ b => s"(function()$b)"
 			case Some(a: List[Any]) ~ b => "(function(" + a.mkString(",") + s")$b)"

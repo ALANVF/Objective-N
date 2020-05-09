@@ -66,7 +66,7 @@
 
 {var pow = $loader.loadprim("std@math_pow", 2)
 	@POW = function(lhs, rhs) {
-		if ($typeof(lhs)==$tint || $typeof(lhs)==$tfloat) && ($typeof(rhs)==$tint || $typeof(rhs)==$float)
+		if ($typeof(lhs)==$tint || $typeof(lhs)==$tfloat) && ($typeof(rhs)==$tint || $typeof(rhs)==$tfloat)
 			return pow(lhs, rhs)
 		else if $typeof(lhs)==$tobject
 			return lhs.__pow(rhs)
