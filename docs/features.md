@@ -19,7 +19,7 @@ Here are some examples:
 ```js
 function(a, b) {return a + b}
 function {1 + 2}
-^(a) {a ** 2}
+^($tint a) {a ** 2}
 ^{thing()}
 ```
 

@@ -1,1 +1,4 @@
 .replit
+.metals
+parser/project/target
+parser/target

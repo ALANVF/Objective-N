@@ -2,261 +2,220 @@ import scala.util.parsing.combinator._
 import sys.process._
 import scala.io.Source
 import java.io._
-// TODO: fix continue in for loop
+import objn.Ast.{Context, Expr, Statement}
+
+// TODO: fix continue in for( ; ; ) loops
 object Main extends App {
-	def argsToSEL(args: List[(Any, Any)]): String =
-		"@SEL($array(" + (args map {"\"" + _._1 + "\""} mkString ",") + "),$array(" + (args map {"\"" + _._2 + "\""} mkString ",") + "))"
-
-	def argsToMessage(args: List[(Any, Any)]): String =
-		"@SEL($array(" + (args map {"\"" + _._1 + "\""} mkString ",") + "),$array(" + (args map {"" + _._2} mkString ",") + "))"
-
-	def messageS(caller: Any, name: String): String =
-		s"$caller.@@send(@SEL(" + "$array(\"" + name + "\"),$array()))"
-
-	def messageM(caller: Any, args: List[(Any, Any)]): String =
-		s"$caller.@@send(${argsToMessage(args)})"
-		
+	val ctx = new Context()
+	
 	class ONParser extends RegexParsers with PackratParsers {
-		def keyword:  Parser[Any] = "var|if|else|do|while|for|return|break|continue|switch|case|default|function|try|catch".r
-		def name:     Parser[Any] = "[a-zA-Z_]\\w*".r
-		def variable: Parser[Any] = not(neko_value | objn_value | keyword) ~> name
-		def builtin:  Parser[Any] = "\\$\\w+".r
+		def keyword:  Parser[Expr] = "var|if|else|do|while|for|return|break|continue|switch|case|default|function|try|catch".r ^^ Expr.Keyword.apply
+		def name:     Parser[String] = "[a-zA-Z_]\\w*".r
+		def variable: Parser[String] = not(neko_value | objn_value | keyword) ~> name
+		def builtin:  Parser[Expr] = "\\$\\w+".r ^^ Expr.Builtin.apply
 		
-		def validType: Parser[Any] =
-			"$tnull"     |
-			"$tint"      |
-			"$tfloat"    |
-			"$tbool"     |
-			"$tstring"   |
-			"$tobject"   |
-			"$tarray"    |
-			"$tfunction" |
-			"$tabstract" |
-			rep1sep(name, ".") ^^ {
-				case List(name) => name
-				case path => path.mkString(".")
-			}
-
-		def neko_value: Parser[Any] = (
-			raw"""(?:"(?:\\\\||\\"||[^"])*?")""".r
-				|
-			"\\d+\\.\\d+".r
-				|
-			"\\d+".r
-				|
-			("true" | "false")
-				|
-			"null"
-				|
-			"this" <~ not("->")
-				|
-			"{" ~> rep1sep((name <~ "=>") ~ expr ^^ {case k ~ v => s"$k=>$v"}, ",") <~ "}" ^^ {_.mkString("{", ",", "}")}
-		)
-
-		def objn_value: Parser[Any] = (
-			"nil" ^^^ messageS("ON_Nil", "make")
-				|
-			"NULL" ^^^ messageS("ON_Null", "make")
-				|
-			raw"""(?:@"(?:\\\\||\\"||[^"])*?")""".r ^^ {v => messageM("ON_String", List(("stringWithNekoString", s"$v".tail)))}
-				|
-			"@\\d+\\.\\d+".r ^^ {v => messageM("ON_Float", List(("floatWithNekoFloat", s"$v".tail)))}
-				|
-			"@\\d+".r ^^ {v => messageM("ON_Integer", List(("integerWithNekoInteger", s"$v".tail)))}
-		)
-
-		def objn_array: Parser[Any] = "@[" ~> repsep(expr, ",") <~ "]" ^^ {
-			case List()       => messageS("ON_Array", "array")
-			case List(e)      => messageM("ON_Array", List(("arrayWithValue", e)))
-			case a: List[Any] => messageM("ON_Array", List(("arrayWithValues", "$array(" + a.mkString(",") + ")")))
-		}
-		
-		def objn_dict: Parser[Any] = "@{" ~> repsep((expr <~ ":") ~ expr ^^ {case k ~ v => (k, v)}, ",") <~ "}" ^^ {
-			case List()              => messageS("ON_Dictionary", "new")
-			case List((k, v))        => messageM("ON_Dictionary", List(("dictionaryWithValue", v), ("forKey", k)))
-			case p: List[(Any, Any)] => messageM("ON_Dictionary", List(
-				("dictionaryWithValues", "$array(" + (p map {_._2} mkString ",") + ")"),
-				("forKeys",              "$array(" + (p map {_._1} mkString ",") + ")")
-			))
-		}
-		
-		def objn_box: Parser[Any] = "@(" ~> expr <~ ")" ^^ {"ON_BoxValue(" + _ + ")"}
-		
-		def func: Parser[Any] = (("^" | "function") ~> opt("(" ~> (repsep(name, ",") ||| (name <~ "...")) <~ ")") ~ block) ^^ {
-			case None               ~ b => s"(function()$b)"
-			case Some(List())       ~ b => s"(function()$b)"
-			case Some(a: List[Any]) ~ b => "(function(" + a.mkString(",") + s")$b)"
-			case Some(a)            ~ b => "$varargs(function(" + s"$a)$b)"
-		}
-
-		def message: Parser[Any] =
-			("[" ~> expr) ~ (
-				(("[a-zA-Z_]\\w*".r) ~ (":" ~> expr) ^^ {case k ~ v => (k, v)}).+
+		def validType: Parser[Expr.Type] = rep1sep(
+			(
+				(
+					"$tnull"     |
+					"$tint"      |
+					"$tfloat"    |
+					"$tbool"     |
+					"$tstring"   |
+					"$tobject"   |
+					"$tarray"    |
+					"$tfunction" |
+					"$tabstract"
+				) ^^ Expr.Type.Builtin.apply
 					|
-				("[a-zA-Z_]\\w*".r) ^^ ("" + _)
+				rep1sep(name, ".") ^^ Expr.Type.Compound.apply
+			),
+			"|"
+		) ^^ {
+			case List(t) => t
+			case ts => Expr.Type.Union(ts)
+		}
+		
+		def neko_value: Parser[Expr] = (
+			raw"""(?:"(?:\\\\||\\"||[^"])*?")""".r ^^ { s => Expr.NekoValue.String(s.tail.init) }
+				|
+			"\\d+\\.\\d+".r ^^ { f => Expr.NekoValue.Float(f.toDouble) }
+				|
+			"\\d+".r ^^ { i => Expr.NekoValue.Int(i.toInt) }
+				|
+			("true" | "false") ^^ { b => Expr.NekoValue.Bool(b.toBoolean) }
+				|
+			"null" ^^^ Expr.NekoValue.Null
+				|
+			"this" <~ not("->") ^^^ Expr.NekoValue.This
+				|
+			"{" ~> rep1sep((name <~ "=>") ~ expr ^^ {case k ~ v => (k, v)}, ",") <~ "}" ^^ Expr.NekoValue.Object.apply
+		)
+
+		def objn_value: Parser[Expr] = (
+			"nil" ^^^ Expr.ObjNValue.Nil
+				|
+			"NULL" ^^^ Expr.ObjNValue.Null
+				|
+			raw"""(?:@"(?:\\\\||\\"||[^"])*?")""".r ^^ { s => Expr.ObjNValue.String(s.drop(2).init) }
+				|
+			"@\\d+\\.\\d+".r ^^ { f => Expr.ObjNValue.Float(f.tail.toDouble) }
+				|
+			"@\\d+".r ^^ { i => Expr.ObjNValue.Int(i.tail.toInt) }
+		)
+
+		def objn_array: Parser[Expr] = "@[" ~> repsep(expr, ",") <~ "]" ^^ Expr.ObjNValue.Array.apply
+		
+		def objn_dict: Parser[Expr] = "@{" ~> repsep((expr <~ ":") ~ expr ^^ {case k ~ v => (k, v)}, ",") <~ "}" ^^ Expr.ObjNValue.Dict.apply
+		
+		def objn_box: Parser[Expr] = "@(" ~> expr <~ ")" ^^ Expr.Box.apply
+		
+		def func: Parser[Expr] = (
+			("^" | "function") ~> (
+				"(" ~> (
+					repsep((validType <~ guard(name)).? ~ name ^^ {case t ~ n => (t, n)}, ",") ^^ Expr.FuncArgs.Args.apply
+						|||
+					(name <~ "...") ^^ Expr.FuncArgs.Varargs.apply
+				) <~ ")"
+			).? ~ block
+		) ^^ {
+			case None ~ b => Expr.Func(Expr.FuncArgs.Args(List()), b)
+			case Some(a) ~ b => Expr.Func(a, b)
+		}
+
+		def message: Parser[Expr] =
+			("[" ~> expr) ~ (
+				(("[a-zA-Z_]\\w*".r) ~ (":" ~> expr) ^^ {case k ~ v => (k, v)}).+ ^^ Right.apply
+					|
+				("[a-zA-Z_]\\w*".r) ^^ Left.apply
 			) <~ "]" ^^ {
-				case c ~ m => m match {
-					case a: List[(Any, Any)] @unchecked => messageM(s"$c", a)
-					case _                              => messageS(s"$c", s"$m")
+				case sender ~ msg => msg match {
+					case Left(msg)                         => Expr.Message.Single(sender, msg)
+					case Right(args: List[(String, Expr)]) => Expr.Message.Multi(sender, args)
 				}
 			}
 			
-		def selectorWithName: Parser[Any] =
-			name ^^ {"@SEL($array(\"" + _ + "\"),$array())"}
-		def selectorWithNames: Parser[Any] =
-			(name <~ ":").+ ^^ {mn => "@SEL($array(" + (mn map {"\"" + _ + "\""} mkString ",") + "),$array(" + List.fill(mn.length)("null").mkString(",") + "))"}
-		def selectorWithArgs: Parser[Any] =
-			(name ~ (":" ~> expr)).+ ^^ {l => argsToMessage(l map {case m ~ v => (m, v)})}
+		def selectorWithName: Parser[Expr.Selector] = name ^^ Expr.Selector.Single.apply
+		def selectorWithNames: Parser[Expr.Selector] = (name <~ ":").+ ^^ Expr.Selector.Multi.apply
+		def selectorWithArgs: Parser[Expr.Selector] = (name ~ (":" ~> expr)).+ ^^ {l => Expr.Selector.Params(l.map {case m ~ v => (m, v)})}
 
-		def selector: Parser[Any] = "@selector(" ~> (selectorWithName ||| selectorWithNames ||| selectorWithArgs) <~ ")"
+		def selector: Parser[Expr] = "@selector(" ~> (selectorWithName ||| selectorWithNames ||| selectorWithArgs) <~ ")"
 		
-		def block: Parser[Any] = "{" ~> program <~ "}" ^^ {case b: List[Any] => b.mkString("{", ";\n", ";}")}
+		def block: Parser[Expr.Block] = "{" ~> program <~ "}" ^^ Expr.Block.apply
 
 		//ops:
-		def op9: Parser[Any] =
+		def op9: Parser[Expr] =
 			op10 ~ (
-				("(" ~> repsep(expr, ",") <~ ")" ^^ {case a: List[Any] => a.mkString("(", ",", ")")})
+				("(" ~> repsep(expr, ",") <~ ")" ^^ { p => (Some(p), None, None) })
 					|||
-				("[" ~> expr <~ "]" ^^ {"[" + _ + "]"})
+				("[" ~> expr <~ "]" ^^ { i => (None, Some(i), None) })
 					|||
-				("." ~> name ^^ {"." + _})
+				("." ~> name ^^ { f => (None, None, Some(f)) })
 			).* ^^ {
-				case l ~ List()         => s"$l"
-				case l ~ (r: List[Any]) => s"$l${r.mkString}"
-			}
-
-		def op8: Parser[Any] =
-			(("!" | "+" | "-" | "~") ^^ {
-				case "!" => "@NOT"
-				case "+" => "@POS"
-				case "-" => "@NEG"
-				case "~" => "@BITNOT"
-			}).? ~ op9 ^^ {
-				case Some(p) ~ r => s"$p($r)"
-				case None    ~ r => s"$r"
-			}
-
-		def op7: Parser[Any] =
-			rep1sep(op8, "**") ^^ {_ reduceLeft {"@POW(" + _ + "," + _ + ")"}}
-
-		def op6: Parser[Any] =
-			op7 ~ (("*" | "/" | "%") ~ op7 ^^ {case o ~ r => s"$o$r"}).* ^^ {
-				case l ~ List()         => s"$l"
-				case l ~ (r: List[Any]) => s"$l" + r.mkString
-			}
-
-		def op5: Parser[Any] =
-			op6 ~ (("+" | "-") ~ op6 ^^ {case o ~ r => s"$o$r"}).* ^^ {
-				case l ~ List()         => s"$l"
-				case l ~ (r: List[Any]) => s"$l" + r.mkString
-			}
-
-		def op4: Parser[Any] =
-			op5 ~ (("<<"^^^"@SHL" | ">>"^^^"@SHR" | "&"^^^"@BITAND" | "|"^^^"@BITOR" | "^"^^^"@BITXOR") ~ op5 ^^ {case o ~ r => (o, r)}).* ^^ {
-				case l ~ List()                => s"$l"
-				case l ~ (r: List[(Any, Any)]) => {
-				 	var out = s"$l"
-					r foreach {case (o, rv) => out = s"$o($out,$rv)"}
-					out
+				case left ~ List() => left
+				case left ~ right => right.foldLeft(left) {
+					case (l, (Some(params), None, None)) => Expr.Call(l, params)
+					case (l, (None, Some(index), None)) => Expr.GetIndex(l, index)
+					case (l, (None, None, Some(field))) => Expr.GetField(l, field)
 				}
 			}
 
-		def op3: Parser[Any] =
-			op4 ~ (("==" | "!=" | ">=" | "<=" | ">" | "<") ~ op4 ^^ {case o ~ r => s"$o$r"}).* ^^ {
-				case l ~ List()         => s"$l"
-				case l ~ (r: List[Any]) => s"$l" + r.mkString
+		def op8: Parser[Expr] =
+			("!" | "+" | "-" | "~").? ~ op9 ^^ {
+				case Some(sym) ~ right => Expr.Op.Prefix(sym, right)
+				case None      ~ right => right
 			}
 
-		def op2: Parser[Any] =
-			op3 ~ (("&&" | "||") ~ op3 ^^ {case o ~ r => s"$o@BOOL($r)"}).* ^^ {
-				case l ~ List()         => s"$l"
-				case l ~ (r: List[Any]) => s"@BOOL($l)" + r.mkString
+		def op7: Parser[Expr] =
+			rep1sep(op8, "**") ^^ { _.reduceLeft(Expr.Op.Infix(_, "**", _)) }
+
+		def op6: Parser[Expr] =
+			op7 ~ (("*" | "/" | "%") ~ op7 ^^ {case o ~ r => (o, r)}).* ^^ {
+				case left ~ List() => left
+				case left ~ right => right.foldLeft(left) {case (l, (o, r)) => Expr.Op.Infix(l, o, r)}
 			}
 
-		lazy val expr: PackratParser[Any] =
+		def op5: Parser[Expr] =
+			op6 ~ (("+" | "-") ~ op6 ^^ {case o ~ r => (o, r)}).* ^^ {
+				case left ~ List() => left
+				case left ~ right => right.foldLeft(left) {case (l, (o, r)) => Expr.Op.Infix(l, o, r)}
+			}
+
+		def op4: Parser[Expr] =
+			op5 ~ (("<<" | ">>" | "&" | "|" | "^") ~ op5 ^^ {case o ~ r => (o, r)}).* ^^ {
+				case left ~ List() => left
+				case left ~ right => right.foldLeft(left) {case (l, (o, r)) => Expr.Op.Infix(l, o, r)}
+			}
+
+		def op3: Parser[Expr] =
+			op4 ~ (("==" | "!=" | ">=" | "<=" | ">" | "<") ~ op4 ^^ {case o ~ r => (o, r)}).* ^^ {
+				case left ~ List() => left
+				case left ~ right => right.foldLeft(left) {case (l, (o, r)) => Expr.Op.Infix(l, o, r)}
+			}
+
+		def op2: Parser[Expr] =
+			op3 ~ (("&&" | "||") ~ op3 ^^ {case o ~ r => (o, r)}).* ^^ {
+				case left ~ List() => left
+				case left ~ right => right.foldLeft(left) {case (l, (o, r)) => Expr.Op.Infix(l, o, r)}
+			}
+
+		lazy val expr: PackratParser[Expr] =
 			op2 ~ (
-				("=" ~> op2).+
+				("=" ~> op2).+ ^^ Left.apply
 					|
-				("+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "<<=" | ">>=" | "&=" | "|=" | "^=" | "&&=" | "||=") ~ op2
+				("+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "<<=" | ">>=" | "&=" | "|=" | "^=" | "&&=" | "||=") ~ op2 ^^ Right.apply
 			).? ^^ {
-				case l ~ None               => s"$l"
-				case l ~ Some(r: List[Any]) => l :: r.mkString("=")
-				case l ~ Some(o ~ r)        => o match {
-					case "**=" => s"$l=@POW($l,$r)"
-					case "<<=" => s"$l=@SHL($l,$r)"
-					case ">>=" => s"$l=@SHR($l,$r)"
-					case "&="  => s"$l=@BITAND($l,$r)"
-					case "|="  => s"$l=@BITOR($l,$r)"
-					case "^="  => s"$l=@BITXOR($l,$r)"
-					case _     => s"$l$o$r"
-				}
-				case l ~ Some(s) => scala.sys.error(s"error at: $l `$s`")
+				case left ~ None => left
+				case left ~ Some(Left(right: List[Expr])) => right.foldLeft(left) {case (l, r) => Expr.Op.Infix(l, "=", r)}
+				case left ~ Some(Right(sym ~ right)) => Expr.Op.Infix(left, sym, right)
 			}
 
 		//expr:
-		lazy val if_expr: PackratParser[Any] =
+		lazy val if_expr: PackratParser[Expr] =
 			("if" ~> expr) ~ statement ~ ("else" ~> statement).? ^^ {
-				case c ~ b1 ~ Some(b2) => s"if @BOOL($c) $b1 else $b2"
-				case c ~ b1 ~ None     => s"if @BOOL($c) $b1"
+				case c ~ b1 ~ Some(b2) => Expr.IfElse(c, b1, b2)
+				case c ~ b1 ~ None     => Expr.If(c, b1)
 			}
 
-		def do_while_expr: Parser[Any] =
-			("do" ~> statement) ~ ("while" ~> expr) ^^ {case b ~ c => s"do $b while @BOOL($c)"}
+		def do_while_expr: Parser[Expr] =
+			("do" ~> statement) ~ ("while" ~> expr) ^^ {case b ~ c => Expr.DoWhile(b, c)}
 
-		def while_expr: Parser[Any] =
-			("while" ~> expr) ~ statement ^^ {case c ~ b => s"while @BOOL($c) $b"}
+		def while_expr: Parser[Expr] =
+			("while" ~> expr) ~ statement ^^ {case c ~ b => Expr.While(c, b)}
 
-		def for_expr: Parser[Any] =
+		def for_expr: Parser[Expr] =
 			("for" ~ "(") ~> (statement.? <~ ";") ~ (expr.? <~ ";") ~ (expr.? <~ ")") ~ statement ^^ {
-				case Some(e1) ~ Some(e2) ~ Some(e3) ~ b => s"{$e1;while @BOOL($e2) {$b;$e3}}"
-				case None     ~ Some(e2) ~ Some(e3) ~ b => s"while @BOOL($e2) {$b;$e3}"
-				case Some(e1) ~ None     ~ Some(e3) ~ b => s"{$e1;while true {$b;$e3}}"
-				case Some(e1) ~ Some(e2) ~ None     ~ b => s"{$e1;while @BOOL($e2) $b}"
-				case None     ~ None     ~ Some(e3) ~ b => s"while true {$b;$e3}"
-				case None     ~ Some(e2) ~ None     ~ b => s"while @BOOL($e2) $b"
-				case Some(e1) ~ None     ~ None     ~ b => s"{$e1;while true $b}"
-				case None     ~ None     ~ None     ~ b => s"while true $b"
+				case e1 ~ e2 ~ e3 ~ b => Expr.For(e1, e2, e3, b)
 			}
 		
-		// TODO: Add break/continue functionality
-		def for_in_expr: Parser[Any] =
+		def for_in_expr: Parser[Expr] =
 			("for" ~ "(") ~> "var".? ~ name ~ ("," ~> name).? ~ ("in" ~> expr <~ ")") ~ statement ^^ {
-				case Some(_) ~ v1 ~ Some(v2) ~ e ~ b => s"""{var $v1,$v2,@__e=ON_MakeEnumerator2($e);while {$v2=${messageS("@__e[1]","nextValue")};$v1=${messageS("@__e[0]","nextValue")}}!=${messageS("ON_Nil","make")} $b}"""
-				case Some(_) ~ v1 ~ None     ~ e ~ b => s"""{var $v1,@__e=ON_MakeEnumerator($e);while ($v1=${messageS("@__e","nextValue")})!=${messageS("ON_Nil","make")} $b}"""
-				case None    ~ v1 ~ Some(v2) ~ e ~ b => s"""{var @__e=ON_MakeEnumerator2($e);while {$v2=${messageS("@__e[1]","nextValue")};$v1=${messageS("@__e[0]","nextValue")}}!=${messageS("ON_Nil","make")} $b}"""
-				case None    ~ v1 ~ None     ~ e ~ b => s"""{var @__e=ON_MakeEnumerator($e);while ($v1=${messageS("@__e","nextValue")})!=${messageS("ON_Nil","make")} $b}"""
+				case Some(_) ~ v1 ~ Some(v2) ~ e ~ b => Expr.ForXYInZ(true, v1, v2, e, b)
+				case Some(_) ~ v1 ~ None     ~ e ~ b => Expr.ForXInY(true, v1, e, b)
+				case None    ~ v1 ~ Some(v2) ~ e ~ b => Expr.ForXYInZ(false, v1, v2, e, b)
+				case None    ~ v1 ~ None     ~ e ~ b => Expr.ForXInY(false, v1, e, b)
 			}
 		
-		def try_catch_expr: Parser[Any] =
-			("try" ~> expr) ~ ("catch" ~> name) ~ expr ^^ {
-				case t ~ e ~ b => s"try $t catch $e $b"
+		def try_catch_expr: Parser[Expr] =
+			("try" ~> statement) ~ ("catch" ~> name) ~ statement ^^ {
+				case t ~ e ~ b => Expr.TryCatch(t, e, b)
 			}
 
-		def switch_expr: Parser[Any] =
+		def switch_expr: Parser[Expr] =
 			("switch" ~> expr) ~ ("{" ~> (
-				("case" ~ expr <~ ":") ~ statement
+				("case" ~> expr <~ ":") ~ statement ^^ {case e ~ s => Some(Expr.SwitchCase.Case(e, s))}
 					|
-				("default" <~ (":" | "=>")) ~ statement
+				("default" <~ (":" | "=>")) ~> statement ^^ {s => Some(Expr.SwitchCase.Default(s))}
 					|
-				expr ~ "=>" ~ statement
+				(expr <~ "=>") ~ statement  ^^ {case e ~ s => Some(Expr.SwitchCase.Case(e, s))}
 					|
-				lineComment
+				lineComment ^^^ None
 			).* <~ "}") ^^ {
-				case e ~ List()         => s"switch $e {}"
-				case e ~ (b: List[Any]) => {
-					var out = s"switch $e {"
-					b foreach {
-						case "case" ~ c ~ r => out += s"$c=>$r" + "\n"
-						case "default" ~ r  => out += s"default=>$r" + "\n"
-						case c ~ "=>" ~ r   => out += s"$c=>$r" + "\n"
-						case _              => ""
-					}
-					out + "}"
-				}
+				case e ~ b => Expr.Switch(e, b.flatten)
 			}
 
-		lazy val op10: PackratParser[Any] = (
-			("this" ~ "->") ~> name ^^ {"this.@@get_vars()." + _} /* fix this eventually */
+		lazy val op10: PackratParser[Expr] = (
+			("this" ~ "->") ~> name ^^ Expr.GetMember.apply /* fix this eventually */
 				|
 			neko_value
 				|
@@ -274,7 +233,7 @@ object Main extends App {
 				|
 			builtin
 				|
-			variable
+			variable ^^ Expr.Variable.apply
 				|
 			message
 				|
@@ -294,157 +253,103 @@ object Main extends App {
 				|
 			switch_expr
 				|
-			not(expr) ~> "(" ~> expr <~ ")" ^^ {"(" + _ + ")"}
+			not(expr) ~> "(" ~> expr <~ ")" ^^ Expr.Paren.apply
 				|
 			expr
 		)
 
 		//objn statements:
-		def objn_interface: Parser[Any] =
+		def objn_method_kind: Parser[Statement.MethodKind] = (
+			"+" ^^^ Statement.MethodKind.Klass
+				|
+			"-" ^^^ Statement.MethodKind.Instance
+		)
+		
+		def objn_interface: Parser[Statement] =
 			(
 				("@interface" ~> name) ~ (":" ~> name).? ~ (
-					("+" | "-") ~ (
-						name
+					objn_method_kind ~ (
+						name ^^ Left.apply
 							|||
-						((name <~ ":") ~ name ^^ {case l ~ r => (l, r)}).+
-					)
+						((name <~ ":") ~ name ^^ {case l ~ r => (l, r)}).+ ^^ Right.apply
+					) ^^ {
+						case k ~ Left(n) => Some(Statement.InterfaceBody.SingleMethod(k, n))
+						case k ~ Right(args) => Some(Statement.InterfaceBody.MultiMethod(k, args))
+					}
+					
 						|
-					"@property" ~ name ~ ("(" ~> rep1sep(name, ",") <~ ")").? ~ ("=" ~> expr <~ ";").?
+					"@property" ~> name ~ ("(" ~> rep1sep(name, ",") <~ ")").? ~ ("=" ~> expr <~ ";").? ^^ {
+						case n ~ None ~ v => Some(Statement.InterfaceBody.Property(n, List(), v))
+						case n ~ Some(a) ~ v => Some(Statement.InterfaceBody.Property(n, a, v))
+					}
 						|
-					lineComment
+					lineComment ^^^ None
 				).* <~ "@end"
 			) ^^ {
-				case n ~ Some(i) ~ List() => s"var $n = @class.new(" + "\"" + n + "\", " + s"$i)"
-				case n ~ None    ~ List() => s"var $n = @class.new(" + "\"" + n + "\", null)"
-				case n ~ (i: Option[Any]) ~ (body: List[Any]) => {
-					var out = ""
-
-					i match {
-						case Some(i) => out += "var " + n + " = @class.new(\"" + n + "\", " + i + ")\n"
-						case None    => out += "var " + n + " = @class.new(\"" + n + "\", null)\n"
-					}
-
-					body foreach {
-						case "@property" ~ p ~ Some(a: List[Any]) ~ None    => out += s"$n.@@add_var(" + "\"" + p + "\", {" + (a map {"" + _ + "=>true"} mkString ",") + "}, null)\n"
-						case "@property" ~ p ~ None               ~ None    => out += s"$n.@@add_var(" + "\"" + p + "\", null, null)\n"
-						case "@property" ~ p ~ Some(a: List[Any]) ~ Some(v) => out += s"$n.@@add_var(" + "\"" + p + "\", {" + (a map {"" + _ + "=>true"} mkString ",") + s"}, function(){$v})" + "\n"
-						case "@property" ~ p ~ None               ~ Some(v) => out += s"$n.@@add_var(" + "\"" + p + "\", null, function(){" + v + "})\n"
-
-						case "+" ~ (m: List[(Any, Any)] @unchecked) => out += s"$n.@@add_class_method("    + argsToSEL(m) + ")\n"
-						case "+" ~ m                                => out += s"$n.@@add_class_method("    + "@SEL($array(\"" + m + "\"),$array()))\n"
-						case "-" ~ (m: List[(Any, Any)] @unchecked) => out += s"$n.@@add_instance_method(" + argsToSEL(m) + ")\n"
-						case "-" ~ m                                => out += s"$n.@@add_instance_method(" + "@SEL($array(\"" + m + "\"),$array()))\n"
-
-						case _ => ""
-					}
-
-					out
-				}
-				case _ => ""
+				case n ~ p ~ b => Statement.Interface(n, p, b.flatten)
 			}
 
-		def objn_implementation: Parser[Any] =
+		def objn_implementation: Parser[Statement] =
 			(
 				("@implementation" ~> name) /*~ ("(" ~> rep1sep(name, ",") <~ ")").?*/ ~ (
-					("+" | "-") ~ (
-						name
+					objn_method_kind ~ (
+						name ^^ Left.apply
 							|||
-						((name <~ ":") ~ ("(" ~> rep1sep(validType, "|") <~ ")").? ~ name ^^ {case l ~ t ~ r => (l, t, r)}).+
-					) ~ block
+						((name <~ ":") ~ ("(" ~> validType <~ ")").? ~ name ^^ {case l ~ t ~ r => (l, t, r)}).+ ^^ Right.apply
+					) ~ block ^^ {
+						case k ~ Left(n) ~ b => Some(Statement.ImplementationBody.SingleMethod(k, n, b))
+						case k ~ Right(args) ~ b => Some(Statement.ImplementationBody.MultiMethod(k, args, b))
+					}
 						|
-					lineComment
+					lineComment ^^^ None
 				).* <~ "@end"
 			) ^^ {
-				case n ~ /*None ~*/ List() => ""
-				case n ~ /*None ~*/ body => {
-					var out = s"$n.@@implementation();"
-					
-					body foreach {
-						case "+" ~ (m: List[(_, Option[List[_]], _)] @unchecked) ~ b => {
-							out += s"$n.@@class_method(" + argsToSEL(m map {case (l, _, r) => (l, r)}) + ", function(args) {"
-							out += m map {
-								case (l, None, r) =>
-									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));"
-								case (l, Some(List(t)), r) =>
-									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + s"objn_Typecheck($t, $r, false);"
-								case (l, Some(t), r) =>
-									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + "objn_Typecheck($array(" + t.mkString(",") + s"), $r, false);"
-							} mkString ","
-							out += ";\n"
-							out += b
-							out += "\n})\n"
-						}
-
-						case "+" ~ m ~ b => {
-							out += s"$n.@@class_method(" + "@SEL($array(\"" + m + "\"),$array()), function() {\n" + b + "\n})\n"
-						}
-
-						case "-" ~ (m: List[(_, Option[List[_]], _)] @unchecked) ~ b => {
-							out += s"$n.@@instance_method(" + argsToSEL(m map {case (l, _, r) => (l, r)}) + ", function(args) {"
-							out += m map {
-								case (l, None, r) =>
-									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));"
-								case (l, Some(List(t)), r) =>
-									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + s"objn_Typecheck($t, $r, false);"
-								case (l, Some(t), r) =>
-									s"var $r" + "=$objget(args,$hash(\"" + l + "\"));" + "objn_Typecheck($array(" + t.mkString(",") + s"), $r, false);"
-							} mkString ","
-							out += ";\n"
-							out += b
-							out += "\n})\n"
-						}
-
-						case "-" ~ m ~ b => {
-							out += s"$n.@@instance_method(" + "@SEL($array(\"" + m + "\"),$array()), function() {\n" + b + "\n})\n"
-						}
-
-						case _ => ""
-					}
-
-					out
-				}
-				case _ => ""
+				case n ~ body => Statement.Implementation(n, body.flatten)
 			}
 
 		//statements:
-		def var_decl: Parser[Any] =
-			"var" ~> rep1sep(name ~ ("=" ~> expr).?, ",") ^^ {l =>
-				"var " + (l map {
-					case n ~ Some(v) => s"$n = $v"
-					case n ~ None    => s"$n"
-				} mkString ",")
-			}
+		def var_decl: Parser[Statement] =
+			"var" ~> rep1sep(name ~ ("=" ~> expr).? ^^ {case n ~ v => (n, v)}, ",") ^^ Statement.VarDecl.apply
 
-		def return_stmt: Parser[Any] =
-			"return" ~> expr ^^ {"return " + _}
+		def return_stmt: Parser[Statement] = "return" ~> expr.? ^^ Statement.Return.apply
 
-		def break_stmt: Parser[Any] =
-			"break" ~> expr.? ^^ {
-				case Some(v) => s"break $v"
-				case None    => "break;"
-			}
+		def break_stmt: Parser[Statement] = "break" ~> expr.? ^^ Statement.Break.apply
 
-		def continue_stmt: Parser[Any] =
-			"continue"
+		def continue_stmt: Parser[Statement] = "continue" ^^^ Statement.Continue
 
-		def func_stmt: Parser[Any] =
-			(("function" ~> name) ~ ("(" ~> (repsep(name, ",") ||| (name <~ "...")) <~ ")") ~ block) ^^ {
-				case n ~ List()         ~ b => s"$n = function()$b"
-				case n ~ (a: List[Any]) ~ b => s"$n = function(" + a.mkString(",") + s")$b"
-				case n ~ a              ~ b => s"$n = " + "$varargs(function(" + s"$a)$b)"
-			}
+		def func_stmt: Parser[Statement] = (
+			("function" ~> name) ~ (
+				"(" ~> (
+					repsep((validType <~ guard(name)).? ~ name ^^ {case t ~ n => (t, n)}, ",") ^^ Expr.FuncArgs.Args.apply
+						|||
+					(name <~ "...") ^^ Expr.FuncArgs.Varargs.apply
+				) <~ ")"
+			) ~ block
+		) ^^ {
+			case n ~ a ~ b => Statement.FuncDecl(n, a, b)
+		}
 
-		def import_macro_stmt: Parser[Any] =
+		def import_macro_stmt: Parser[Statement] =
 			"#import" ~> ("\"(?:\\\"|[^\"])*?\"".r) ^^ {e =>
-				val name = s"$e".init.tail
+				val filePath = s"$e".init.tail
 				
-				if(name endsWith ".neko")
-					("\n/* " + name + " */\n\n" + Source.fromFile(name).mkString + "\n")
-				else if((name endsWith ".mn") || (name endsWith ".hn"))
-					("\n/* " + name + " */\n\n" + parser(Source.fromFile(name).mkString) + "\n")
+				if(ctx.imports.contains(filePath)) {
+					Statement.ImportFile(filePath, true)
+				} else {
+					ctx.imports(filePath) = if(filePath endsWith ".neko") {
+						Source.fromFile(filePath).mkString
+					} else if((filePath endsWith ".mn") || (filePath endsWith ".hn")) {
+						ctx.imports(filePath) = "" // To prevent circular imports
+						parser(Source.fromFile(filePath).mkString)
+					} else {
+						scala.sys.error("Invalid file import \"" + filePath + "\"!")
+					}
+					
+					Statement.ImportFile(filePath, false)
+				}
 			}
 
-		def statement: Parser[Any] = (
+		def statement: Parser[Statement] = (
 			(objn_interface
 				|||
 			objn_implementation
@@ -464,13 +369,17 @@ object Main extends App {
 			expr
 		)
 
-		def lineComment: Parser[Any] = "//(?:[^\\n]*)".r ^^^ ""
-		def program:     Parser[Any] = ((statement ||| lineComment) <~ ";".?).*
+		def lineComment: Parser[String] = "//[^\\n\\r]*".r
+		def program: Parser[List[Statement]] = (
+			lineComment ^^ {c => Expr.Raw(c + "\n")}
+				|||
+			statement <~ ";".?
+		).*
 
 		// parse thing
-		def apply(input: String): Any = {
+		def apply(input: String): String = {
 			parseAll(program, input) match {
-				case Success(result, _) => result.asInstanceOf[List[Any]].mkString(";\n")
+				case Success(result, _) => result.map(_.toNeko(ctx)).mkString(";\n")
 				case failure: NoSuccess => scala.sys.error(failure.toString)
 			}
 		}
@@ -481,9 +390,9 @@ object Main extends App {
 	
 	args(0) match {
 		case "-h" | "--help" => println("Usage: `objn-parser [options] filename` (you don't need the file extension).\n\n" +
-			"-h, --help | display this message.\n" +
-			"-c         | compile to Neko only.\n" +
-			"-b         | combole to Neko Bytecode only.")
+			"-h, --help | Display this message.\n" +
+			"-c         | Compile to Neko only.\n" +
+			"-b         | Compile to Neko Bytecode only.")
 		
 		case "-c" => {
 			val sourceFile = Source.fromFile(args(1) + ".mn").mkString
@@ -505,7 +414,7 @@ object Main extends App {
 		
 		case _ => {
 			val sourceFile = Source.fromFile(args(0) + ".mn").mkString
-			var output = s"// ${args(0)}.mn" + "\n\n" + parser(sourceFile)
+			var output = s"// ${args(0)}.mn\n\n" + parser(sourceFile)
 			
 			new PrintWriter(args(0) + ".neko") {write(output); close}
 			
@@ -513,4 +422,5 @@ object Main extends App {
 			s"neko ${args(0)}.n".!
 		}
 	}
+	
 }
