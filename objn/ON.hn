@@ -21,7 +21,6 @@
 	
 	+ integerWithNekoInteger:int
 	
-	- init
 	- initWithValue:value
 	
 	- compare:value
@@ -44,7 +43,6 @@
 	
 	+ floatWithNekoFloat:float
 	
-	- init
 	- initWithValue:value
 	
 	- compare:value
@@ -70,7 +68,6 @@
 	+ stringWithNekoString:value
 	+ stringWithString:str
 	
-	- init
 	- initWithLength:length
 	- initWithNekoString:value
 	//- initWithContentsOfFile:path
@@ -197,7 +194,6 @@
 	+ arrayWithValues:values
 	+ arrayWithArray:array copyItems:copy
 	
-	- init
 	- initWithValue:value
 	- initWithValues:values
 	- initWithArray:array copyItems:copy
@@ -374,7 +370,6 @@
 	@property position (read) = 0;
 	@property length (read) = 0;
 	
-	- init
 	- initAtPosition:pos withLength:len
 	
 	- containsLocation:value

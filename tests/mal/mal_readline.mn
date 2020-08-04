@@ -1,7 +1,7 @@
 // not doing this for a while lol
 
 //change later
-function _readline(prompt) {objn_Typecheck($tstring,prompt,false)
+function _readline($tstring prompt) {
 	$print(prompt)
 	
 //	var str = "", c = 0
@@ -12,10 +12,10 @@ function _readline(prompt) {objn_Typecheck($tstring,prompt,false)
 //	}
 	var str = " ", stdin = [NL_file stdin], len = 0, ch
 	while true {
-		try ch = [NL_file read_char:stdin] catch _ {break}
-		if ch == 10 {break}
+		try ch = [NL_file read_char:stdin] catch _ break;
+		if ch == 10 break;
 		str += " "
-		if $sset(str, len, ch) == null {break} else len += 1
+		if $sset(str, len, ch) == null break else len += 1
 	}
 	
 	return str

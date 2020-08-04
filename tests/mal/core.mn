@@ -5,7 +5,7 @@
 //#import "../tests/mal/malfunc.mn"
 #import "../tests/mal/core.hn"
 
-function wrap_tf(val) {objn_Typecheck($tbool,val,false)
+function wrap_tf($tbool val) {
 	return if val [MalTrue make] else [MalFalse make]
 }
 
@@ -34,10 +34,10 @@ function wrap_tf(val) {objn_Typecheck($tbool,val,false)
 			@"read-string": ^(args) {read_str(args[0])},
 			@"readline": ^(args) {
 				var rawline = _readline($string(args[0]))
-				if rawline != ""
-					return @(rawline)
+				return if rawline != ""
+					@(rawline)
 				else
-					return NULL
+					NULL
 			},
 			@"slurp": ^(args) {@([NL_file contents:$string(args[0])])},
 			

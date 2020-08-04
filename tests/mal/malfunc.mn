@@ -18,9 +18,9 @@
 	}
 @end
 
-function apply(f, args) {objn_Typecheck($array($tfunction,MalFunc),f,false);objn_Typecheck(ON_Array,args,false);
-	if objn_Typecheck(MalFunc,f,true)
-		return [f apply:args]
-	else
+function apply($tfunction | MalFunc f, ON_Array args) {
+	if $typeof(f) == $tfunction
 		return f(args)
+	else
+		return [f apply:args]
 }

@@ -3,3 +3,4 @@
 parser/project/target
 parser/project/project
 parser/target
+*.n

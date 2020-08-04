@@ -9,7 +9,7 @@
 #import "../tests/mal/malfunc.mn"
 #import "../tests/mal/core.mn"
 
-function READ(str) {objn_Typecheck(ON_String,str,false)
+function READ(ON_String str) {
 	return read_str(str)
 }
 
@@ -18,7 +18,7 @@ function is_pair(obj) {
 	[obj isKindOfClass:ON_Array] && [obj count] > 0
 }
 
-function quasiquote(ast) {objn_Typecheck(ON_Object,ast,false)
+function quasiquote(ON_Object ast) {
 	if !is_pair(ast)
 		return @[[MalSymbol new:@"quote"], ast]
 	else {
@@ -34,11 +34,12 @@ function quasiquote(ast) {objn_Typecheck(ON_Object,ast,false)
 	}
 }
 
-function is_macro_call(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function is_macro_call(ON_Null | ON_Object ast, Env env) {
 	if list_Q(ast) {
 		if [ast[0] isKindOfClass:MalSymbol] && [env find:ast[0]] {
 			var mf = [env get:ast[0]]
-			return false if $typeof(mf)!=$tobject
+			if $typeof(mf)!=$tobject
+				return false
 			if [mf isKindOfClass:MalFunc]
 				return [mf isMacro]
 		}
@@ -46,7 +47,7 @@ function is_macro_call(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,f
 	return false
 }
 
-function macroexpand(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function macroexpand(ON_Null | ON_Object ast, Env env) {
 	while is_macro_call(ast, env)
 		ast = [[env get:ast[0]] apply:_rest(ast)]
 	
@@ -55,15 +56,15 @@ function macroexpand(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,fal
 
 
 
-function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function eval_ast(ON_Null | ON_Object ast, Env env) {
 	if [ast isKindOfClass:MalSymbol] {
 		return [env get:ast]
 	} else if [ast isKindOfClass:ON_Array] {
 		var newList = [ast arrayWithFunction:^(v) {EVAL(v, env)}]
-		if [ast isKindOfClass:MalVector]
-			return [MalVector fromArray:newList]
+		return if [ast isKindOfClass:MalVector]
+			[MalVector fromArray:newList]
 		else
-			return newList
+			newList
 	} else if [ast isKindOfClass:ON_Dictionary] {
 		var newDict = [ON_MutableDictionary dictionary]
 		
@@ -76,7 +77,7 @@ function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false)
 	}
 }
 
-function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function EVAL(ON_Null | ON_Object ast, Env env) {
 	while true {
 		if !list_Q(ast)
 			return eval_ast(ast, env)
@@ -119,8 +120,8 @@ function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);obj
 					var a2 = ast[2]
 					if [a2[0] isKindOfClass:MalSymbol] && [[MalSymbol new:a2[0]] isEqualToString:@"catch*"]
 						return EVAL(a2[2], [Env fromBindings:env
-														  binds:@[a2[1]]
-														  exprs:@[@(e)]])
+													   binds:@[a2[1]]
+													   exprs:@[@(e)]])
 				}
 				$throw(e)
 			} 
@@ -159,15 +160,15 @@ function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);obj
 	}
 }
 
-function PRINT(exp) {//objn_Typecheck($array(ON_Null,ON_Object),exp,false)
+function PRINT(exp) {
 	return _pr_str(exp, true)
 }
 
-function REP(line, env) {objn_Typecheck(ON_String,line,false);objn_Typecheck(Env,env,false)
+function REP(ON_String line, Env env) {
 	return PRINT(EVAL(READ(line), env))
 }
 
-function RE(line, env) {objn_Typecheck(ON_String,line,false);objn_Typecheck(Env,env,false)
+function RE(ON_String line, Env env) {
 	return EVAL(READ(line), env)
 }
 

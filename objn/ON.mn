@@ -26,23 +26,22 @@
 		return [[this make] initWithValue:int]
 	}
 	
-	- init { //todo: remove default constructors since I added default values
-		return this
-	}
 	- initWithValue:($tint | ON_Integer)value {
-		if $typeof(value) == $tint
-			this->raw = value
+		this->raw = if $typeof(value) == $tint
+			value
 		else
-			this->raw = [value raw]
+			[value raw]
 		
 		return this
 	}
 	
 	- compare:value {
-		if objn_Typecheck(ON_Integer, value, true)
-			return $compare(this->raw, [value raw])
+		return if objn_Typecheck(ON_Integer, value, true)
+			$compare(this->raw, [value raw])
+		else if $typeof(value) == $tint
+			$compare(this->raw, value)
 		else
-			return $compare(this->raw, value)
+			false
 	}
 	- isEqual:value {
 		return [this compare:value] == 0
@@ -71,23 +70,19 @@
 		return [[this make] initWithValue:float]
 	}
 	
-	- init {
-		return this
-	}
 	- initWithValue:($tfloat | ON_Float)value {
-		if $typeof(value) == $tfloat
-			this->raw = value
-		else
-			this->raw = [value raw]
+		this->raw = if $typeof(value) == $tfloat value else [value raw]
 		
 		return this
 	}
 	
 	- compare:value {
-		if objn_Typecheck(ON_Float, value, true)
-			return $compare(this->raw, [value raw])
+		return if objn_Typecheck(ON_Float, value, true)
+			$compare(this->raw, [value raw])
+		else if $typeof(value) == $tfloat
+			$compare(this->raw, value)
 		else
-			return $compare(this->raw, value)
+			false
 	}
 	- isEqual:value {
 		return [this compare:value] == 0
@@ -125,9 +120,6 @@
 		return [[this make] initWithString:str]
 	}
 	
-	- init {
-		return this
-	}
 	- initWithLength:($tint)length {
 		this->raw = $smake(length)
 		
@@ -209,71 +201,55 @@
 	//- stringByTrimmingCharactersInSet:set
 	- substringFromIndex:($tint)index {
 		switch index {
-			case 0:
-				return [this copy]
-			
-			case [NL_UTF8 length:this->raw]:
-				return @""
-			
-			default:
-				return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
+			0 => [this copy]
+			[NL_UTF8 length:this->raw] => @""
+			default => [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
 				                                                pos:index
 				                                                len:[NL_UTF8 length:this->raw]-index]]
 		}
 	}
 	- substringWithRange:(ON_Range)range {
-		if [range length] == 0
-			return @""
+		return if [range length] == 0
+			@""
 		else if [range position] == 0 && [range length] == [this length]
-			return [this copy]
+			[this copy]
 		else {
-			return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
-			                                                pos:[range position]
-			                                                len:[range length]]]
+			[ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
+			                                         pos:[range position]
+			                                         len:[range length]]]
 		}
 	}
 	- substringToIndex:($tint)index {
-		switch index {
-			case 0:
-				return @""
-			
-			case [NL_UTF8 length:this->raw]:
-				return [this copy]
-			
-			default:
-				return [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
+		return switch index {
+			0 => @""
+			[NL_UTF8 length:this->raw] => [this copy]
+			default => [ON_String stringWithNekoString:[NL_UTF8 sub:this->raw
 				                                                pos:0
 				                                                len:index]]
 		}
 	}
 	
 	- containsString:(ON_String)str {
-		if $sfind(this->raw, 0, [str raw]) == null
-			return false
-		else
-			return true
+		return $sfind(this->raw, 0, [str raw]) == null
 	}
 	- containsString:(ON_String)str range:(ON_Range)range {
 		var p = $sfind(this->raw, 0, [str raw])
-		if p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
-			return false
-		else
-			return true
+		return p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
 	}
 	
 	- rangeOfString:(ON_String)str {
 		var p = $sfind(this->raw, 0, [str raw])
-		if p == null
-			return ON_MakeRange(-1, 0)
+		return if p == null
+			ON_MakeRange(-1, 0)
 		else
-			return ON_MakeRange(p, [str length])
+			ON_MakeRange(p, [str length])
 	}
 	- rangeOfString:(ON_String)str range:(ON_Range)range {
 		var p = $sfind(this->raw, 0, [str raw])
-		if p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
-			return ON_MakeRange(-1, 0)
+		return if p == null || ![range containsLocation:p] || ![range containsLocation:p + [str length]]
+			ON_MakeRange(-1, 0)
 		else
-			return ON_MakeRange(p, [str length])
+			ON_MakeRange(p, [str length])
 	}
 	
 	//todo: add range options
@@ -282,38 +258,29 @@
 						   with:[str raw]]
 	}
 	- compare:(ON_String)str caseInsensitive:($tbool)ci {
-		if ci
-			return [this compare:str]
+		return if ci
+			[this compare:str]
 		else
-			return [[this lowercaseString] compare:[str lowercaseString]]
+			[[this lowercaseString] compare:[str lowercaseString]]
 	}
 	
 	- hasPrefix:(ON_String)str {
-		if [str length] > [this length]
-			return false
-		
-		if [str isEqualToString:@([NL_UTF8 sub:this->raw pos:0 len:[str length]])]
-			return true
+		return if [str length] > [this length]
+			false
 		else
-			return false
+			[str isEqualToString:@([NL_UTF8 sub:this->raw pos:0 len:[str length]])]
 	}
 	- hasSuffix:(ON_String)str {
-		if [str length] > [this length]
-			return false
-		
-		if [str isEqualToString:@([NL_UTF8 sub:this->raw pos:[this length]-[str length] len:[str length]])]
-			return true
+		return if [str length] > [this length]
+			false
 		else
-			return false
+			[str isEqualToString:@([NL_UTF8 sub:this->raw pos:[this length]-[str length] len:[str length]])]
 	}
 	- hash {
 		return $hash(this->raw)
 	}
 	- isEqualToString:(ON_String)str {
-		if [NL_UTF8 compare:this->raw with:[str raw]] == 0
-			return true
-		else
-			return false
+		return [NL_UTF8 compare:this->raw with:[str raw]] == 0
 	}
 	- isEqual:value {
 		if objn_Typecheck(ON_String, value, true)
@@ -555,12 +522,6 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		                        copyItems:copy]
 	}
 	
-	- init {
-		//this->raw = $array()
-		//this->count = 0
-		
-		return this
-	}
 	- initWithValue:value {
 		this->raw = $array(value)
 		this->count = 1
@@ -911,12 +872,6 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 @end
 
 @implementation ON_Range
-	- init {
-		//this->position = 0
-		//this->length = 0
-		
-		return this
-	}
 	- initAtPosition:($tint)pos withLength:($tint)len {
 		this->position = pos
 		this->length = len
@@ -1008,25 +963,33 @@ function ON_Log(args...) {
 	}
 }
 
-function ON_MakeRange(pos, len) {
+function ON_MakeRange($tint pos, $tint len) {
 	return [[ON_Range make] initAtPosition:pos withLength:len]
 }
 
-function ON_MakeEnumerator(v) {
+function ON_MakeEnumerator($tarray | $tobject v) {
 	switch $typeof(v) {
-		case $tarray: [[ON_Enumerator make] initWithValues:v]
-		case $tobject: if $objgetproto(v) != $objgetproto(ON_Object) [[ON_Dictionary dictionaryWithNekoObject:v] ON_Enumerator] else [v ON_Enumerator]
-		default: $throw("Cannot enumerate value `"+$string(v)+"`!")
+		$tarray => [[ON_Enumerator make] initWithValues:v]
+		$tobject =>
+			if $objgetproto(v) != $objgetproto(ON_Object)
+				[[ON_Dictionary dictionaryWithNekoObject:v] ON_Enumerator]
+			else
+				[v ON_Enumerator]
+		default => $throw("Cannot enumerate value `"+$string(v)+"`!")
 	}
 }
-function ON_MakeEnumerator2(v) {
+function ON_MakeEnumerator2($tarray | $tobject v) {
 	switch $typeof(v) {
-		case $tarray: @[
+		$tarray => @[
 			[[ON_MakeRange(0, $asize(v)-1) ON_Array] ON_Enumerator],
 			[[ON_Enumerator make] initWithValues:v]
 		]
-		case $tobject: if $objgetproto(v) != $objgetproto(ON_Object) [[ON_Dictionary dictionaryWithNekoObject:v] ON_Enumerator2] else [v ON_Enumerator2]
-		default: $throw("Cannot double enumerate value `"+$string(v)+"`!")
+		$tobject =>
+			if $objgetproto(v) != $objgetproto(ON_Object)
+				[[ON_Dictionary dictionaryWithNekoObject:v] ON_Enumerator2]
+			else
+				[v ON_Enumerator2]
+		default => $throw("Cannot double enumerate value `"+$string(v)+"`!")
 	}
 }
 
@@ -1034,15 +997,15 @@ function ON_MakeEnumerator2(v) {
 
 function ON_BoxValue(val) {//todo: make objn bool type
 	return switch $typeof(val) {
-		case $tnull: NULL
-		case $tint: [ON_Integer integerWithNekoInteger:val]
-		case $tfloat: [ON_Float floatWithNekoFloat:val]
-		case $tstring: [ON_String stringWithNekoString:val]
-		case $tbool: val
-		case $tarray: [ON_Array arrayWithValues:val]
-		case $tobject: if $objgetproto(val) == $objgetproto(ON_Object) val else [ON_Dictionary dictionaryWithNekoObject:val]
-		case $tfunction: $throw("cannot convert a $tfunction value to an ON value!")
-		case $tabstract: $throw("$tabstract to ON value not implemented yet")
-		default: $throw("error!")
+		$tnull     => NULL
+		$tint      => [ON_Integer integerWithNekoInteger:val]
+		$tfloat    => [ON_Float floatWithNekoFloat:val]
+		$tstring   => [ON_String stringWithNekoString:val]
+		$tbool     => val
+		$tarray    => [ON_Array arrayWithValues:val]
+		$tobject   => if $objgetproto(val) == $objgetproto(ON_Object) val else [ON_Dictionary dictionaryWithNekoObject:val]
+		$tfunction => $throw("cannot convert a $tfunction value to an ON value!")
+		$tabstract => $throw("$tabstract to ON value not implemented yet")
+		default    => $throw("error!")
 	}
 }

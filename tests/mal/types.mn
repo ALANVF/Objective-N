@@ -7,10 +7,10 @@
 		
 		for(var i = 0; i < [binds count]; i += 1) {
 			if [@($string(binds[i])) isEqualToString:@"&"] {
-				if [exprs count] > i
-					this->data[binds[i+1]] = [exprs subarrayWithRange:ON_MakeRange(i, [exprs count] - i)]
+				this->data[binds[i+1]] = if [exprs count] > i
+					[exprs subarrayWithRange:ON_MakeRange(i, [exprs count] - i)]
 				else
-					this->data[binds[i+1]] = @[]
+					@[]
 				break;
 			} else {
 				this->data[binds[i]] = exprs[i]
@@ -48,12 +48,12 @@
 	}
 	
 	- find:(MalSymbol)key {
-		if [this->data hasKey:key]
-			return this
+		return if [this->data hasKey:key]
+			this
 		else if this->outer
-			return [this->outer find:key]
+			[this->outer find:key]
 		else
-			return nil
+			nil
 	}
 	
 	- get:(MalSymbol)key {
@@ -75,7 +75,7 @@
 	+ new:str {[this stringWithString:str]}
 @end
 
-function string_Q(obj) {//obj==null && {return false}
+function string_Q(ON_Object obj) {//obj==null && {return false}
 	if [obj isKindOfClass:ON_String] {
 		var s = [obj ON_String]
 		if [s isKindOfClass:MalSymbol] {
@@ -91,7 +91,7 @@ function list_Q(obj) {//obj==null && {return false}
 	return [obj isKindOfClass:ON_Array] && [obj class] != MalVector
 }
 
-function _rest(obj) {objn_Typecheck(ON_Array, obj, false)
+function _rest(ON_Array obj) {
 	return [obj subarrayWithRange:ON_MakeRange(1, [obj count]-1)]
 }
 
@@ -103,13 +103,13 @@ function _rest(obj) {objn_Typecheck(ON_Array, obj, false)
 	}
 @end
 
-function assoc_BANG(d, kvs) {objn_Typecheck(ON_MutableDictionary, d, false);objn_Typecheck(ON_Array, kvs, false)
+function assoc_BANG(ON_MutableDictionary d, ON_Array kvs) {
 	for(var i = 0; i < [kvs count]; i += 2)
 		d[kvs[i]] = kvs[i+1]
 	return d
 }
 
-function hash_map(kvs) {objn_Typecheck(ON_Array, kvs, false)
+function hash_map(ON_Array kvs) {
 	return assoc_BANG([ON_MutableDictionary dictionary], kvs)
 }
 
@@ -136,11 +136,11 @@ function atom_Q(obj) {
 
 // general functions
 
-function sequential_Q(obj) {objn_Typecheck($tobject, obj, false)
+function sequential_Q(ON_Object obj) {
 	return objn_Typecheck(ON_Array, obj, true)
 }
 
-function equal_Q(a, b) {objn_Typecheck($tobject, a, false);objn_Typecheck($tobject, b, false)
+function equal_Q(ON_Object a, ON_Object b) {
 	if !([a class] == [b class]
 			||
 		(objn_Typecheck(ON_Array, a, true) && objn_Typecheck(ON_Array, b, true))
