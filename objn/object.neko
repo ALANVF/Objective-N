@@ -4,145 +4,151 @@ var ON_Object = @class.new("ON_Object", null)
 	ON_Object.@@add_var("class", {read => true}, null)
 	ON_Object.@@add_var("className", {read => true}, null)
 	
-	ON_Object.@@add_class_method(@SEL($array("make"), $array()))
-	ON_Object.@@add_class_method(@SEL($array("new"), $array()))
+	ON_Object.@@add_class_method(@SEL(0, $array("make")))
+	ON_Object.@@add_class_method(@SEL(0, $array("new")))
 	
-	ON_Object.@@add_class_method(@SEL($array("respondsToSelector"), $array("sel")))
-	ON_Object.@@add_class_method(@SEL($array("doesNotRecognizeSelector"), $array("sel"))) //maybe change to +resolveClassMethod
+	ON_Object.@@add_class_method(@SEL(1, $array("respondsToSelector")))
+	ON_Object.@@add_class_method(@SEL(1, $array("doesNotRecognizeSelector"))) //maybe change to +resolveClassMethod
 	
-	ON_Object.@@add_class_method(@SEL($array("class"), $array()))
-	ON_Object.@@add_class_method(@SEL($array("superclass"), $array()))
-	ON_Object.@@add_class_method(@SEL($array("isSubclassOfClass"), $array("class")))
+	ON_Object.@@add_class_method(@SEL(0, $array("class")))
+	ON_Object.@@add_class_method(@SEL(0, $array("superclass")))
+	ON_Object.@@add_class_method(@SEL(1, $array("isSubclassOfClass")))
 	
-	ON_Object.@@add_class_method(@SEL($array("performSelector"), $array("sel")))
+	ON_Object.@@add_class_method(@SEL(1, $array("performSelector")))
+	ON_Object.@@add_class_method(@SEL(2, $array("performSelector", "withValues")))
 	
-	ON_Object.@@add_instance_method(@SEL($array("init"), $array()))
-	ON_Object.@@add_instance_method(@SEL($array("superclass"), $array()))
-	ON_Object.@@add_instance_method(@SEL($array("copy"), $array()))
+	ON_Object.@@add_instance_method(@SEL(0, $array("init")))
+	ON_Object.@@add_instance_method(@SEL(0, $array("superclass")))
+	ON_Object.@@add_instance_method(@SEL(0, $array("copy")))
 	
-	ON_Object.@@add_instance_method(@SEL($array("respondsToSelector"), $array("sel")))
-	ON_Object.@@add_instance_method(@SEL($array("doesNotRecognizeSelector"), $array("sel"))) //maybe change to +resolveInstanceMethod
+	ON_Object.@@add_instance_method(@SEL(1, $array("respondsToSelector")))
+	ON_Object.@@add_instance_method(@SEL(1, $array("doesNotRecognizeSelector"))) //maybe change to +resolveInstanceMethod
 	
-	ON_Object.@@add_instance_method(@SEL($array("isKindOfClass"), $array("class")))
-	//ON_Object.@@add_instance_method(@SEL($array("isMemberOfClass"), $array("class")))
+	ON_Object.@@add_instance_method(@SEL(1, $array("isKindOfClass")))
+	//ON_Object.@@add_instance_method(@SEL(1, $array("isMemberOfClass")))
 	
-	ON_Object.@@add_instance_method(@SEL($array("performSelector"), $array("sel")))
+	ON_Object.@@add_instance_method(@SEL(1, $array("performSelector")))
+	ON_Object.@@add_instance_method(@SEL(2, $array("performSelector", "withValues")))
 	
-	ON_Object.@@add_instance_method(@SEL($array("isEqual"), $array("value")))
+	ON_Object.@@add_instance_method(@SEL(1, $array("isEqual")))
 	
-	ON_Object.@@add_instance_method(@SEL($array("__string"), $array()))
+	ON_Object.@@add_instance_method(@SEL(0, $array("__string")))
 // @end
 
 // @implementation ON_Object
-	ON_Object.@@class_method(@SEL($array("make"), $array()), function() {
+	ON_Object.@@class_method(@SEL(0, $array("make")), function() {
 		var _ = $new(this)
 		_.@inst = true
 		_.@instance_vars = $new(this.@instance_vars)
 		
-		var ivl = $objfields(_.@instance_vars);
-		{
-			var i = 0;
-			while i < $asize(ivl) {
-				if $objget(_.@instance_vars, ivl[i]) != null {
-					$objset(_.@instance_vars, ivl[i], $objget(_.@instance_vars, ivl[i])())
-				}
-				
-				i += 1;
+		var ivl = $objfields(_.@instance_vars)
+		var i = 0
+		while i < $asize(ivl) {
+			if $objget(_.@instance_vars, ivl[i]) != null {
+				$objset(_.@instance_vars, ivl[i], $objget(_.@instance_vars, ivl[i])())
 			}
+			
+			i += 1
 		}
 		
 		_.@instance_vars.class = this
 		_.@instance_vars.className = this.@name
 		return _
 	})
-	ON_Object.@@class_method(@SEL($array("new"), $array()), function() {
-		return this.@@send(@SEL($array("make"), $array())).@@send(@SEL($array("init"), $array()))
+	ON_Object.@@class_method(@SEL(0, $array("new")), function() {
+		return this.@@send(@SEL(0, $array("make")), $array()).@@send(@SEL(0, $array("init")), $array())
 	})
 	
-	ON_Object.@@class_method(@SEL($array("respondsToSelector"), $array("sel")), function(args) {var sel=args.respondsToSelector;
-		if $objfield(this.@class_attrs, $hash(sel.@toString())) {
-			if $objget(this.@class_attrs, $hash(sel.@toString())) != null
-				return true
-			else
-				return false
+	ON_Object.@@class_method(@SEL(1, $array("respondsToSelector")), function(sel) {
+		return if $objfield(this.@class_attrs, $hash(sel.@toString())) {
+			$objget(this.@class_attrs, $hash(sel.@toString())) != null
 		} else {
-			return false
+			false
 		}
 	})
-	ON_Object.@@class_method(@SEL($array("doesNotRecognizeSelector"), $array("sel")), function(args) {var sel=args.doesNotRecognizeSelector;
+	ON_Object.@@class_method(@SEL(1, $array("doesNotRecognizeSelector")), function(sel) {
 		$throw("Unknown selector `"+sel+"` for class \""+(this.@name)+"\"!")
 	})
 	
-	ON_Object.@@class_method(@SEL($array("class"), $array()), function() {
+	ON_Object.@@class_method(@SEL(0, $array("class")), function() {
 		return this
 	})
-	ON_Object.@@class_method(@SEL($array("superclass"), $array()), function() {
+	ON_Object.@@class_method(@SEL(0, $array("superclass")), function() {
 		return this.@super
 	})
-	ON_Object.@@class_method(@SEL($array("isSubclassOfClass"), $array("class")), function(args) {var class=args.isSubclassOfClass;
-		if this == class
-			return true
+	ON_Object.@@class_method(@SEL(1, $array("isSubclassOfClass")), function(class) {
+		return if this == class
+			true
 		else if this.@super != null
-			return this.@super.@@send(@SEL($array("isSubclassOfClass"), $array(class)))
+			this.@super.@@send(@SEL(1, $array("isSubclassOfClass")), $array(class))
 		else
-			return false
+			false
 	})
 	
-	ON_Object.@@class_method(@SEL($array("performSelector"), $array("sel")), function(args) {var sel=args.performSelector;
-		if this.@@send(@SEL($array("respondsToSelector"), $array(sel)))
-			return this.@@send(sel)
+	ON_Object.@@class_method(@SEL(1, $array("performSelector")), function(sel) {
+		return if this.@@send(@SEL(1, $array("respondsToSelector")), $array(sel))
+			this.@@send(sel, $array())
 		else
-			this.@@send(@SEL($array("doesNotRecognizeSelector"), $array(sel)))
+			this.@@send(@SEL(1, $array("doesNotRecognizeSelector")), $array(sel))
+	})
+	ON_Object.@@class_method(@SEL(2, $array("performSelector", "withValues")), function(sel, values) {
+		return if this.@@send(@SEL(1, $array("respondsToSelector")), $array(sel))
+			this.@@send(sel, values)
+		else
+			this.@@send(@SEL(1, $array("doesNotRecognizeSelector")), $array(sel))
 	})
 	
-	ON_Object.@@instance_method(@SEL($array("init"), $array()), function() {
+	ON_Object.@@instance_method(@SEL(0, $array("init")), function() {
 		if this.@inst
 			return this
 		else
 			$throw("error")
 	})
-	ON_Object.@@instance_method(@SEL($array("superclass"), $array()), function() {
-		return this.@super
+	ON_Object.@@instance_method(@SEL(0, $array("superclass")), function() {
+		return this.@@instance_vars.class.@super
 	})
-	ON_Object.@@instance_method(@SEL($array("copy"), $array()), function() {
+	ON_Object.@@instance_method(@SEL(0, $array("copy")), function() {
 		return $new(this)
 	})
 	
-	ON_Object.@@instance_method(@SEL($array("respondsToSelector"), $array("sel")), function(args) {var sel=args.respondsToSelector;
-		if $objfield(this.@instance_attrs, $hash(sel.@toString())) {
-			if $objget(this.@instance_attrs, $hash(sel.@toString())) != null
-				return true
-			else
-				return false
+	ON_Object.@@instance_method(@SEL(1, $array("respondsToSelector")), function(sel) {
+		return if $objfield(this.@instance_attrs, $hash(sel.@toString())) {
+			$objget(this.@instance_attrs, $hash(sel.@toString())) != null
 		} else {
-			return false
+			false
 		}
 	})
-	ON_Object.@@instance_method(@SEL($array("doesNotRecognizeSelector"), $array("sel")), function(args) {var sel=args.doesNotRecognizeSelector;
+	ON_Object.@@instance_method(@SEL(1, $array("doesNotRecognizeSelector")), function(sel) {
 		$throw("Unknown selector `"+sel+"` for instance of class \""+(this.@name)+"\"!")
 	})
 	
-	ON_Object.@@instance_method(@SEL($array("isKindOfClass"), $array("class")), function(args) {var class=args.isKindOfClass;
-		if this.@instance_vars.class == class
-			return true
+	ON_Object.@@instance_method(@SEL(1, $array("isKindOfClass")), function(class) {
+		return if this.@instance_vars.class == class
+			true
 		else if this.@super != null
-			return this.@super.@@send(@SEL($array("isSubclassOfClass"), $array(class)))
+			this.@instance_vars.class.@super.@@send(@SEL(1, $array("isSubclassOfClass")), $array(class))
 		else
-			return false
+			false
 	})
 	
-	ON_Object.@@instance_method(@SEL($array("performSelector"), $array("sel")), function(args) {var sel=args.performSelector;
-		if this.@@send(@SEL($array("respondsToSelector"), $array(sel)))
-			return this.@@send(sel)
+	ON_Object.@@instance_method(@SEL(1, $array("performSelector")), function(sel) {
+		return if this.@@send(@SEL(1, $array("respondsToSelector")), $array(sel))
+			this.@@send(sel, $array())
 		else
-			this.@@send(@SEL($array("doesNotRecognizeSelector"), $array(sel)))
+			this.@@send(@SEL(1, $array("doesNotRecognizeSelector")), $array(sel))
+	})
+	ON_Object.@@instance_method(@SEL(2, $array("performSelector", "withValues")), function(sel, values) {
+		return if this.@@send(@SEL(1, $array("respondsToSelector")), $array(sel))
+			this.@@send(sel, values)
+		else
+			this.@@send(@SEL(1, $array("doesNotRecognizeSelector")), $array(sel))
 	})
 	
-	ON_Object.@@instance_method(@SEL($array("isEqual"), $array("value")), function(args) {var value=args.isEqual;
+	ON_Object.@@instance_method(@SEL(1, $array("isEqual")), function(value) {
 		return this == value
 	})
 	
-	ON_Object.@@instance_method(@SEL($array("__string"), $array()), function() {
+	ON_Object.@@instance_method(@SEL(0, $array("__string")), function() {
 		var _ = $new(this.@instance_vars)
 		$objremove(_, $hash("class"))
 		$objremove(_, $hash("className"))
@@ -156,43 +162,54 @@ var id = $new(null)
 	switch $typeof(t) {
 		$tint => $array("$tnull","$tint","$tfloat","$tbool","$tstring","$tobject","$tarray","$tfunction","$tabstract")[t]
 		$tarray => {
-			var out = @typefmt(t[0]),
-				i = 1;
+			var out = @typefmt(t[0]), i = 1
 			while i < $asize(t) {
-				out += "|" + @typefmt(t[i]);
+				out += "|" + @typefmt(t[i])
 				i += 1
-			};
+			}
 			out
 		}
 		$tobject => $string(t)
 	}
 }
 @typecheck = function(type, value, n) {
-	if type == id
+	if type == id // maybe fix that idk
 		return true
 	
-	switch $typeof(type) {
-		$tint => if($typeof(value)==type) return true else if n return false else $throw("`"+$string(value)+"` does not match type `"+@typefmt(type)+"`!")
-		$tarray => {
-			var t=false,
-				i=0;
-			while i<$asize(type) {
-				if t==false
-					t = @typecheck(type[i],value,true)
-				i+=1
-			};
-			if t return true else if n return false else $throw("`"+$string(value)+"` does not match type `"+@typefmt(type)+"`!")
-		}
-		$tobject => if $objfield(type, $hash("@@send")) {
-			if $objfield(value, $hash("@@send")) {
-				if value.@@send(@SEL($array("isKindOfClass"), $array(type)))
-					return true
-				else
-					return false
-			} else if n
-				return false
+	return switch $typeof(type) {
+		$tint => {
+			if $typeof(value) == type
+				true
+			else if n
+				false
 			else
-				$throw("`"+$string(value)+"` does not match type `"+@typefmt(type)+"`!")} else $throw("error! ["+$string(value)+"]")
+				$throw("`"+$string(value)+"` does not match type `"+@typefmt(type)+"`!")
+		}
+		$tarray => {
+			var t = false, i = 0
+			while i < $asize(type) {
+				if $not(t)
+					t = @typecheck(type[i], value, true)
+				i += 1
+			}
+			if t
+				true
+			else if n
+				false
+			else
+				$throw("`"+$string(value)+"` does not match type `"+@typefmt(type)+"`!")
+		}
+		$tobject => {
+			if $objfield(type, $hash("@@send")) {
+				if $objfield(value, $hash("@@send"))
+					value.@@send(@SEL(1, $array("isKindOfClass")), $array(type))
+				else if n
+					false
+				else
+					$throw("`"+$string(value)+"` does not match type `"+@typefmt(type)+"`!")
+			} else
+				$throw("error! ["+$string(value)+"]")
+		}
 		default => $throw("`"+$string(type)+"` is not a valid type!")
 	}
 }
@@ -201,7 +218,7 @@ var @makecopy = function(val) {
 	switch $typeof(val) {
 		$tstring => $scopy(val)
 		$tarray => $acopy(val)
-		$tobject => if $objfield(val, $hash("@@send")) val.@@send(@SEL($array("copy"), $array())) else $new(val)
+		$tobject => if $objfield(val, $hash("@@send")) val.@@send(@SEL(0, $array("copy")), $array()) else $new(val)
 		$tabstract => $throw("not implemented yet!")
 		default => val
 	}

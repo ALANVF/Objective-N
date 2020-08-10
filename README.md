@@ -28,8 +28,5 @@ A: I haven't tested it, but you probably can.
 #### Q: Can I use Haxe classes/functions/etc in Obj-N by using the Neko backend?
 A: I haven't tested it, but you probably can since it uses modules. For identifiers that include `@`-signs, you can just use `$objget(value, $hash("my@property"))`.
 
-#### Q: So I looked at the code for the parser...
-A: Yes, I'm fully aware that the code looks ugly/messy.
-
 #### Q: Why did it take nearly a year for you to update the readme?
 A: Never got around to doing it.

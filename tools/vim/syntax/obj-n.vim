@@ -49,7 +49,7 @@ syn keyword   objnBuiltin     getkind iskind                                    
 syn keyword   objnBuiltin     hkey hnew hresize hget hmem hremove hset hadd hiter hcount hsize               contained
 syn keyword   objnBuiltin     print throw rethrow                                                            contained
 syn keyword   objnBuiltin     istrue not typeof pcompare compare                                             contained
-syn keyword   objnBuiltin     excstack callstack excstack version setresolver loader exports                 contained
+syn keyword   objnBuiltin     excstack callstack version setresolver loader exports                          contained
 
 " todo: finish property highlighting
 syn keyword   objnKeyword     break case catch continue default do else for

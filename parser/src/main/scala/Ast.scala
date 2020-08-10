@@ -5,20 +5,11 @@ import scala.collection.mutable.{Map => MutableMap}
 import scala.io.BufferedSource
 
 package object Ast {
-	def singleSel(name: String) = s"@SEL($$array(" + '"' + name + "\"),$array())"
-	def multiSel(names: List[(String, String)]): String = {
-		val (k, v) = names.unzip
-		val ks = array(k.map('"' + _ + '"'))
-		val vs = array(v.map('"' + _ + '"'))
+	def singleSel(name: String) = s"@SEL(0, $$array(" + '"' + name + "\"))"
+	def multiSel(names: List[String]): String = {
+		val ks = array(names.map('"' + _ + '"'))
 		
-		return s"@SEL($ks,$vs)"
-	}
-	def argsSel(names: List[(String, String)]): String = {
-		val (k, v) = names.unzip
-		val ks = array(k.map('"' + _ + '"'))
-		val vs = array(v)
-		
-		return s"@SEL($ks,$vs)"
+		return s"@SEL(${names.length}, $ks)"
 	}
 	
 	def array(values: String*) = values.mkString("$array(", ",", ")")
@@ -124,29 +115,14 @@ package object Ast {
 		sealed trait Selector extends Expr
 		object Selector {
 			case class Single(name: String) extends Selector {
-				def toNeko(ctx: Context) = "@SEL($array(\"" + name + "\"),$array())"
+				def toNeko(ctx: Context) = "@SEL(0, $array(\"" + name + "\"))"
 			}
 			case class Multi(names: List[String]) extends Selector {
 				def toNeko(ctx: Context) = String.join("",
-					"@SEL($array(",
+					s"@SEL(${names.length},$$array(",
 						names.map('"' + _ + '"').mkString(","),
-					"),$array(",
-						List.fill(names.length)("null").mkString(","),
 					"))"
 				)
-			}
-			case class Params(params: List[(String, Expr)]) extends Selector {
-				def toNeko(ctx: Context): String = {
-					val (names, vals) = params.unzip
-					
-					return String.join("",
-						"@SEL($array(",
-							names.map('"' + _ + '"').mkString(","),
-						"),$array(",
-							vals.map(_.toNeko(ctx)).mkString(","),
-						"))"
-					)
-				}
 			}
 		}
 		
@@ -222,24 +198,23 @@ package object Ast {
 		sealed trait Message extends Expr { val sender: Expr }
 		object Message {
 			case class Single(sender: Expr, name: String) extends Message {
-				def toNeko(ctx: Context) = s"${sender.toNeko(ctx)}.@@send(${singleSel(name)})"
+				def toNeko(ctx: Context) = send(sender.toNeko(ctx), name)
 			}
 			case class Multi(sender: Expr, params: List[(String, Expr)]) extends Message {
 				def toNeko(ctx: Context): String = {
 					val (names, vals) = params.unzip
 					
-					return String.join("",
-						s"${sender.toNeko(ctx)}.@@send(@SEL($$array(",
-							names.map('"' + _ + '"').mkString(","),
-						"),$array(",
-							vals.map(_.toNeko(ctx)).mkString(","),
-						")))"
-					)
+					return send(sender.toNeko(ctx), names, vals.map(_.toNeko(ctx)))
 				}
 			}
 			
-			def send(sender: String, name: String) = s"$sender.@@send(${singleSel(name)})"
-			def send(sender: String, args: List[(String, String)]) = s"$sender.@@send(${argsSel(args)})"
+			def send(sender: String, name: String) = s"$sender.@@send(${singleSel(name)},$$array())"
+			def send(sender: String, args: List[(String, String)]): String = {
+				val (names, vals) = args.unzip
+				
+				return send(sender, names, vals)
+			}
+			def send(sender: String, names: List[String], args: List[String]) = s"$sender.@@send(${multiSel(names)}," + array(args) + ")"
 		}
 		
 		
@@ -383,7 +358,7 @@ package object Ast {
 				def toNeko(ctx: Context, klass: String) = s"$klass.@@add_${kind.toNeko}_method(${singleSel(name)})"
 			}
 			case class MultiMethod(kind: MethodKind, args: List[(String, String)]) extends InterfaceBody {
-				def toNeko(ctx: Context, klass: String) = s"$klass.@@add_${kind.toNeko}_method(${multiSel(args)})"
+				def toNeko(ctx: Context, klass: String) = s"$klass.@@add_${kind.toNeko}_method(${multiSel(args.unzip._1)})"
 			}
 		}
 		case class Interface(name: String, parent: Option[String], body: List[InterfaceBody]) extends Statement {
@@ -408,14 +383,18 @@ package object Ast {
 					s"$klass.@@${kind.toNeko}_method(${singleSel(name)},function()" + body.toNeko(ctx) + ");"
 			}
 			case class MultiMethod(kind: MethodKind, args: List[(String, Option[Expr.Type], String)], body: Expr.Block) extends ImplementationBody {
-				def toNeko(ctx: Context, klass: String) = String.join("",
-					s"$klass.@@${kind.toNeko}_method(${multiSel(args.map {case (l, _, v) => (l, v)})},function(args)",
-					body.toNeko(ctx, args.map {
-						case (l, None, r) => s"var $r=$$objget(args,$$hash(" + '"' + l + "\"));"
-						case (l, Some(t), r) => s"var $r=$$objget(args,$$hash(" + '"' + l + '"' + s"));objn_Typecheck(${t.toNeko},$r,false);"
-					}.mkString),
-					");"
-				)
+				def toNeko(ctx: Context, klass: String) = {
+					val (labels, _, names) = args.unzip3
+					
+					String.join("",
+						s"$klass.@@${kind.toNeko}_method(${multiSel(labels)},function(${names.mkString(",")})",
+						body.toNeko(ctx, args.flatMap {
+							case (_, None, n) => None
+							case (_, Some(t), n) => Some(s"objn_Typecheck(${t.toNeko},$n,false);")
+						}.mkString),
+						");"
+					)
+				}
 			}
 		}
 		case class Implementation(name: String, body: List[ImplementationBody]) extends Statement {

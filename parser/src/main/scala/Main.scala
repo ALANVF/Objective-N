@@ -97,9 +97,8 @@ object Main extends App {
 			
 		def selectorWithName: Parser[Expr.Selector] = name ^^ Expr.Selector.Single.apply
 		def selectorWithNames: Parser[Expr.Selector] = (name <~ ":").+ ^^ Expr.Selector.Multi.apply
-		def selectorWithArgs: Parser[Expr.Selector] = (name ~ (":" ~> expr)).+ ^^ {l => Expr.Selector.Params(l.map {case m ~ v => (m, v)})}
 
-		def selector: Parser[Expr] = "@selector(" ~> (selectorWithName ||| selectorWithNames ||| selectorWithArgs) <~ ")"
+		def selector: Parser[Expr] = "@selector(" ~> (selectorWithName ||| selectorWithNames) <~ ")"
 		
 		def block: Parser[Expr.Block] = "{" ~> program <~ "}" ^^ Expr.Block.apply
 

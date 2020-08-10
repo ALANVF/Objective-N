@@ -1,202 +1,177 @@
 @@SEL = $new(null)
+@@SEL.@arity = null
 @@SEL.@names = null
-@@SEL.@args = null
-@@SEL.@new = function(names, args) {
-		if $typeof(names) == $tarray && $typeof(args) == $tarray {
+@@SEL.@new = function(arity, names) {
+	if $typeof(names) == $tstring {
+		names = $array(names)
+	}
+	
+	if $typeof(arity) == $tint && $typeof(names) == $tarray {
 		var _ = $new(this)
+		_.@arity = arity
 		_.@names = names
-		_.@args = args
 		
 		return _
+	} else {
+		$throw("Invalid selector: `"+arity+"`, `"+names+"`")
 	}
 }
-@@SEL.@toMessage = function() {
-	if $asize(this.@args) == 0
-		return null
-	else {
-		var _ = $new(null)
-		
-		var i = 0
-		while i < $asize(this.@names) {
-			$objset(_, $hash(this.@names[i]), this.@args[i])
-			
-			i += 1
-		}
-		
-		return _
-	}
-}
-@@SEL.@fromString = function(str, args) {
+@@SEL.@fromString = function(str) {
 	// todo
+	$throw("todo!")
 }
 @@SEL.@toString = function() {
-	if $asize(this.@names) == 1 && $asize(this.@args) == 0 {
-		return this.@names[0]
+	return if this.@arity == 0 {
+		this.@names[0]
 	} else {
 		var name = ""
-						
 		var i = 0
-		while i < $asize(this.@names) {
+		
+		while i < this.@arity {
 			name += this.@names[i] + "@"
-			
 			i += 1
 		}
 		
-		return name
+		name
 	}
 }
 @@SEL.__string = function() {
-	if $asize(this.@names) == 1 && $asize(this.@args) == 0 {
-		return this.@names[0]
+	return if this.@arity == 0 {
+		this.@names[0]
 	} else {
 		var name = ""
-						
 		var i = 0
-		while i < $asize(this.@names) {
+		
+		while i < this.@arity {
 			name += this.@names[i] + ":"
-			
 			i += 1
 		}
 		
-		return name
+		name
 	}
 }
 
-@SEL = function(_1, _2) {return @@SEL.@new(_1, _2)}
+@SEL = function(_1, _2) @@SEL.@new(_1, _2)
 
-{var pow = $loader.loadprim("std@math_pow", 2)
-	@POW = function(lhs, rhs) {
-		if ($typeof(lhs)==$tint || $typeof(lhs)==$tfloat) && ($typeof(rhs)==$tint || $typeof(rhs)==$tfloat)
-			return pow(lhs, rhs)
-		else if $typeof(lhs)==$tobject
-			return lhs.__pow(rhs)
-		else if $typeof(rhs)==$tobject
-			return rhs.__rpow(lhs)
-		else
-			$throw("`"+lhs+"` ** `"+rhs+"` doesn't look right")
-	}
-}
+var std@math_pow = $loader.loadprim("std@math_pow", 2)
+@POW = function(lhs, rhs)
+	if ($typeof(lhs)==$tint || $typeof(lhs)==$tfloat) && ($typeof(rhs)==$tint || $typeof(rhs)==$tfloat)
+		std@math_pow(lhs, rhs)
+	else if $typeof(lhs)==$tobject
+		lhs.__pow(rhs)
+	else if $typeof(rhs)==$tobject
+		rhs.__rpow(lhs)
+	else
+		$throw("`"+lhs+"` ** `"+rhs+"` doesn't look right")
 
 @BITAND = function(lhs, rhs)
 	if $typeof(lhs)==$tint && $typeof(rhs)==$tint
-		return lhs & rhs
+		lhs & rhs
 	else if $typeof(lhs)==$tobject
-		return lhs.__bitand(rhs)
+		lhs.__bitand(rhs)
 	else if $typeof(rhs)==$tobject
-		return rhs.__rbitand(lhs)
+		rhs.__rbitand(lhs)
 	else
 		$throw("`"+lhs+"` & `"+rhs+"` doesn't look right")
 
 @BITOR = function(lhs, rhs)
 	if $typeof(lhs)==$tint && $typeof(rhs)==$tint
-		return lhs | rhs
+		lhs | rhs
 	else if $typeof(lhs)==$tobject
-		return lhs.__bitor(rhs)
+		lhs.__bitor(rhs)
 	else if $typeof(rhs)==$tobject
-		return rhs.__rbitor(lhs)
+		rhs.__rbitor(lhs)
 	else
 		$throw("`"+lhs+"` | `"+rhs+"` doesn't look right")
 
 @BITXOR = function(lhs, rhs)
 	if $typeof(lhs)==$tint && $typeof(rhs)==$tint
-		return lhs ^ rhs
+		lhs ^ rhs
 	else if $typeof(lhs)==$tobject
-		return lhs.__bitxor(rhs)
+		lhs.__bitxor(rhs)
 	else if $typeof(rhs)==$tobject
-		return rhs.__rbitxor(lhs)
+		rhs.__rbitxor(lhs)
 	else
 		$throw("`"+lhs+"` ^ `"+rhs+"` doesn't look right")
 
 @SHL = function(lhs, rhs)
 	if $typeof(lhs)==$tint && $typeof(rhs)==$tint
-		return lhs << rhs
+		lhs << rhs
 	else if $typeof(lhs)==$tobject
-		return lhs.__shl(rhs)
+		lhs.__shl(rhs)
 	else if $typeof(rhs)==$tobject
-		return rhs.__rshl(lhs)
+		rhs.__rshl(lhs)
 	else
 		$throw("`"+lhs+"` << `"+rhs+"` doesn't look right")
 
 @SHR = function(lhs, rhs)
 	if $typeof(lhs)==$tint && $typeof(rhs)==$tint
-		return lhs >> rhs
+		lhs >> rhs
 	else if $typeof(lhs)==$tobject
-		return lhs.__shr(rhs)
+		lhs.__shr(rhs)
 	else if $typeof(rhs)==$tobject
-		return rhs.__rshr(lhs)
+		rhs.__rshr(lhs)
 	else
 		$throw("`"+lhs+"` >> `"+rhs+"` doesn't look right")
 
 @NOT = function(v)
 	if $typeof(v) == $tobject
-		return v.__not()
+		v.__not()
 	else
-		return $not(v)
+		$not(v)
 
 @BITNOT = function(v)
 	if $typeof(v) == $tobject
-		return v.__bitnot()
+		v.__bitnot()
 	else if $typeof(v) == $tint
-		return v ^ -1
+		v ^ -1
 	else
 		$throw("~`"+v+"` doesn't look right")
 
 @BOOL = function(v)
 	if $typeof(v) == $tobject
-		return v.__bool()
+		v.__bool()
 	else
-		return $istrue(v)
+		$istrue(v)
 
 @POS = function(v)
 	if $typeof(v) == $tobject
-		return v.__pos()
+		v.__pos()
 	else if $typeof(v) == $tint || $typeof(v) == $tfloat
-		return v
+		v
 	else
 		$throw("+`"+v+"` doesn't look right")
 
 @NEG = function(v)
 	if $typeof(v) == $tobject
-		return v.__neg()
-	else if $typeof(v) == $tint || $typeof(v) == $tfloat
-		return -v
-	else
+		v.__neg()
+	else if $typeof(v) == $tint || $typeof(v) == $tfloat {
+		-v
+	} else
 		$throw("-`"+v+"` doesn't look right")
 
+// TODO: this should probably use object prototypes
 @class = $new(null)
 	@class.new = function(name, inherit) {
-		if inherit == null {
-			var _ = $new(this)
-			$objremove(_, $hash("new"))
-			
-			_.@name    = name
-			_.@inst    = false
-			_.@super   = null
-			
-			_.@class_attrs    = $new(null)
-			_.@instance_attrs = $new(null)
-			_.@class_vars     = $new(null)
-			_.@instance_vars  = $new(null)
-			
-			return _
-		} else {
-			var _ = $new(this)
-			$objremove(_, $hash("new"))
-			
-			_.@name    = name
-			_.@inst    = false
-			_.@super   = inherit
-			
-			_.@class_attrs    = $new(null)
-			_.@instance_attrs = $new(null)
-			_.@class_vars     = $new(null)
-			_.@instance_vars  = $new(null)
+		var _ = $new(this)
+		$objremove(_, $hash("new"))
+		
+		_.@name  = name
+		_.@inst  = false
+		_.@super = null
+		
+		_.@class_attrs    = $new(null)
+		_.@instance_attrs = $new(null)
+		_.@class_vars     = $new(null)
+		_.@instance_vars  = $new(null)
+		
+		if inherit != null {
+			_.@super = inherit
 		
 			var d = $objfields(inherit.@class_attrs)
 			var j = 0
 			while j < $asize(d) {
 				$objset(_.@class_attrs, d[j], $objget(inherit.@class_attrs, d[j]))
-				
 				j += 1
 			}
 			
@@ -204,7 +179,6 @@
 			j = 0
 			while j < $asize(d) {
 				$objset(_.@instance_attrs, d[j], $objget(inherit.@instance_attrs, d[j]))
-				
 				j += 1
 			}
 			
@@ -212,7 +186,6 @@
 			j = 0
 			while j < $asize(d) {
 				$objset(_.@class_vars, d[j], $objget(inherit.@class_vars, d[j]))
-				
 				j += 1
 			}
 			
@@ -220,20 +193,19 @@
 			j = 0
 			while j < $asize(d) {
 				$objset(_.@instance_vars, d[j], $objget(inherit.@instance_vars, d[j]))
-				
 				j += 1
 			}
-			
-			return _
 		}
+		
+		return _
 	}
 	
-	@class.@@add_class_method = function(args) {
-		$objset(this.@class_attrs, $hash(args.@toString()), null)
+	@class.@@add_class_method = function(sel) {
+		$objset(this.@class_attrs, $hash(sel.@toString()), null)
 	}
 	
-	@class.@@add_instance_method = function(args) {
-		$objset(this.@instance_attrs, $hash(args.@toString()), null)
+	@class.@@add_instance_method = function(sel) {
+		$objset(this.@instance_attrs, $hash(sel.@toString()), null)
 	}
 	
 	@class.@@add_var = function(name, attrs, defval) {
@@ -249,9 +221,7 @@
 				}
 				
 				if attrs.write {
-					this.@@class_method(@SEL($array(name), $array(null)), function(args) {
-						var value = $objget(args, $hash(name))
-						
+					$objset(this.@@class_attrs, $hash(name+"@"), function(value) {
 						$objset(this.@class_vars, $hash(name), value)
 					})
 				}
@@ -265,9 +235,7 @@
 				}
 				
 				if attrs.write {
-					$objset(this.@instance_attrs, $hash(name+"@"), function(args) {
-						var value = $objget(args, $hash(name))
-						
+					$objset(this.@instance_attrs, $hash(name+"@"), function(value) {
 						$objset(this.@instance_vars, $hash(name), value)
 					})
 				}
@@ -279,13 +247,12 @@
 	
 	@class.@@implementation = function() {
 		if this.@super == null
-			return null
+			return;
 		
 		var d = $objfields(this.@super.@class_attrs)
 		var j = 0
 		while j < $asize(d) {
 			$objset(this.@class_attrs, d[j], $objget(this.@super.@class_attrs, d[j]))
-			
 			j += 1
 		}
 		
@@ -293,7 +260,6 @@
 		j = 0
 		while j < $asize(d) {
 			$objset(this.@instance_attrs, d[j], $objget(this.@super.@instance_attrs, d[j]))
-			
 			j += 1
 		}
 	}
@@ -307,32 +273,29 @@
 	}
 	
 	@class.@@get_vars = function() {
-		if this.@inst {
-			return this.@instance_vars
+		return if this.@inst {
+			this.@instance_vars
 		} else {
-			return this.@class_vars
+			this.@class_vars
 		}
 	}
 	
-	@class.@@send = function(args) {
-		if this.@inst {
-			if $objfield(this.@instance_attrs, $hash(args.@toString())) {
-				/*$nargs($objget(this.@instance_attrs, $hash(args.@toString()))) == 0*/
-				if $sfind(args.@toString(), 0, "@") == null
-					$call($objget(this.@instance_attrs, $hash(args.@toString())), this, $array())
-				else
-					$call($objget(this.@instance_attrs, $hash(args.@toString())), this, $array(args.@toMessage()))
-			} else
-				$call(this.@instance_attrs.doesNotRecognizeSelector@, this, $array({doesNotRecognizeSelector=>args}))
+	@class.@@send = function(sel, args) {
+		var selField = $hash(sel.@toString())
+		return if this.@inst {
+			if $objfield(this.@instance_attrs, selField) {
+				$call($objget(this.@instance_attrs, selField), this, args)
+			} else {
+				// TODO: implement `- forwardInvocation:`
+				// $call(this.@instance_attrs.doesNotRecognizeSelector@, this, $array(sel, args))
+				$call(this.@instance_attrs.doesNotRecognizeSelector@, this, $array(sel))
+			}
 		} else {
-			if $objfield(this.@class_attrs, $hash(args.@toString())) {
-				/*$nargs($objget(this.@class_attrs, $hash(args.@toString()))) == 0*/
-				if $sfind(args.@toString(), 0, "@") == null
-					$call($objget(this.@class_attrs, $hash(args.@toString())), this, $array())
-				else
-					$call($objget(this.@class_attrs, $hash(args.@toString())), this, $array(args.@toMessage()))
-			} else
-				$call(this.@class_attrs.doesNotRecognizeSelector@, this, $array({doesNotRecognizeSelector=>args}))
+			if $objfield(this.@class_attrs, selField) {
+				$call($objget(this.@class_attrs, selField), this, args)
+			} else {
+				$call(this.@class_attrs.doesNotRecognizeSelector@, this, $array(sel))
+			}
 		}
 	}
 	
@@ -340,12 +303,12 @@
 	@class.__add = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__add@"))
-				this.@@send(@SEL($array("__add"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__add")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__add@"))
-				this.@@send(@SEL($array("__add"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__add")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -353,12 +316,12 @@
 	@class.__radd = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__radd@"))
-				this.@@send(@SEL($array("__radd"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__radd")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__radd@"))
-				this.@@send(@SEL($array("__radd"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__radd")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -367,12 +330,12 @@
 	@class.__sub = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__sub@"))
-				this.@@send(@SEL($array("__sub"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__sub")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__sub@"))
-				this.@@send(@SEL($array("__sub"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__sub")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -380,12 +343,12 @@
 	@class.__rsub = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rsub@"))
-				this.@@send(@SEL($array("__rsub"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rsub")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rsub@"))
-				this.@@send(@SEL($array("__rsub"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rsub")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -394,12 +357,12 @@
 	@class.__mult = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__mult@"))
-				this.@@send(@SEL($array("__mult"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__mult")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__mult@"))
-				this.@@send(@SEL($array("__mult"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__mult")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -407,12 +370,12 @@
 	@class.__rmult = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rmult@"))
-				this.@@send(@SEL($array("__rmult"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rmult")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rmult@"))
-				this.@@send(@SEL($array("__rmult"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rmult")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -421,12 +384,12 @@
 	@class.__div = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__div@"))
-				this.@@send(@SEL($array("__div"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__div")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__div@"))
-				this.@@send(@SEL($array("__div"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__div")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -434,12 +397,12 @@
 	@class.__rdiv = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rdiv@"))
-				this.@@send(@SEL($array("__rdiv"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rdiv")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rdiv@"))
-				this.@@send(@SEL($array("__rdiv"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rdiv")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -448,12 +411,12 @@
 	@class.__mod = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__mod@"))
-				this.@@send(@SEL($array("__mod"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__mod")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__mod@"))
-				this.@@send(@SEL($array("__mod"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__mod")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -461,12 +424,12 @@
 	@class.__rmod = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rmod@"))
-				this.@@send(@SEL($array("__rmod"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rmod")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rmod@"))
-				this.@@send(@SEL($array("__rmod"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rmod")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -475,12 +438,12 @@
 	@class.__pow = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__pow@"))
-				this.@@send(@SEL($array("__pow"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__pow")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__pow@"))
-				this.@@send(@SEL($array("__pow"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__pow")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -488,12 +451,12 @@
 	@class.__rpow = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rpow@"))
-				this.@@send(@SEL($array("__rpow"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rpow")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rpow@"))
-				this.@@send(@SEL($array("__rpow"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rpow")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -502,12 +465,12 @@
 	@class.__bitand = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__bitand@"))
-				this.@@send(@SEL($array("__bitand"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__bitand")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__bitand@"))
-				this.@@send(@SEL($array("__bitand"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__bitand")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -515,12 +478,12 @@
 	@class.__rbitand = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rbitand@"))
-				this.@@send(@SEL($array("__rbitand"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rbitand")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rbitand@"))
-				this.@@send(@SEL($array("__rbitand"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rbitand")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -529,12 +492,12 @@
 	@class.__bitor = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__bitor@"))
-				this.@@send(@SEL($array("__bitor"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__bitor")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__bitor@"))
-				this.@@send(@SEL($array("__bitor"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__bitor")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -542,12 +505,12 @@
 	@class.__rbitor = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rbitor@"))
-				this.@@send(@SEL($array("__rbitor"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rbitor")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rbitor@"))
-				this.@@send(@SEL($array("__rbitor"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rbitor")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -556,12 +519,12 @@
 	@class.__bitxor = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__bitxor@"))
-				this.@@send(@SEL($array("__bitxor"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__bitxor")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__bitxor@"))
-				this.@@send(@SEL($array("__bitxor"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__bitxor")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -569,12 +532,12 @@
 	@class.__rbitxor = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rbitaxor@"))
-				this.@@send(@SEL($array("__rbitxor"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rbitxor")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rbitxor@"))
-				this.@@send(@SEL($array("__rbitxor"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rbitxor")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -583,12 +546,12 @@
 	@class.__shl = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__shl@"))
-				this.@@send(@SEL($array("__shl"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__shl")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__shl@"))
-				this.@@send(@SEL($array("__shl"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__shl")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -596,12 +559,12 @@
 	@class.__rshl = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rshl@"))
-				this.@@send(@SEL($array("__rshl"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rshl")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rshl@"))
-				this.@@send(@SEL($array("__rshl"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rshl")), $array(lhs))
 			else
 				$throw("error")
 		}
@@ -610,12 +573,12 @@
 	@class.__shr = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__shr@"))
-				this.@@send(@SEL($array("__shr"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__shr")), $array(rhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__shr@"))
-				this.@@send(@SEL($array("__shr"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__shr")), $array(rhs))
 			else
 				$throw("error")
 		}
@@ -623,26 +586,27 @@
 	@class.__rshr = function(lhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__rshr@"))
-				this.@@send(@SEL($array("__rshr"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rshr")), $array(lhs))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__rshr@"))
-				this.@@send(@SEL($array("__rshr"), $array(lhs)))
+				this.@@send(@SEL(1, $array("__rshr")), $array(lhs))
 			else
 				$throw("error")
 		}
 	}
 	
-	/*@class.__compare = function(rhs) {
+	/* TODO: figure out why this breaks
+	@class.__compare = function(rhs) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__compare@"))
-				this.@@send(@SEL($array("__compare"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__compare")), $array(rhs))
 			else
 				return $pcompare(this, rhs)
 		} else {
 			if $objfield(this.@class_attrs, $hash("__compare@"))
-				this.@@send(@SEL($array("__compare"), $array(rhs)))
+				this.@@send(@SEL(1, $array("__compare")), $array(rhs))
 			else
 				return $pcompare(this, rhs)
 		}
@@ -651,12 +615,12 @@
 	@class.__bool = function() {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__bool"))
-				this.@@send(@SEL($array("__bool"), $array()))
+				this.@@send(@SEL(0, $array("__bool")), $array())
 			else
 				true
 		} else {
 			if $objfield(this.@class_attrs, $hash("__bool"))
-				this.@@send(@SEL($array("__bool"), $array()))
+				this.@@send(@SEL(0, $array("__bool")), $array())
 			else
 				true
 		}
@@ -665,12 +629,12 @@
 	@class.__not = function() {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__not"))
-				this.@@send(@SEL($array("__not"), $array()))
+				this.@@send(@SEL(0, $array("__not")), $array())
 			else
 				$not(this.__bool())
 		} else {
 			if $objfield(this.@class_attrs, $hash("__not"))
-				this.@@send(@SEL($array("__not"), $array()))
+				this.@@send(@SEL(0, $array("__not")), $array())
 			else
 				$not(this.__bool())
 		}
@@ -679,12 +643,12 @@
 	@class.__bitnot = function() {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__bitnot"))
-				this.@@send(@SEL($array("__bitnot"), $array()))
+				this.@@send(@SEL(0, $array("__bitnot")), $array())
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__bitnot"))
-				this.@@send(@SEL($array("__bitnot"), $array()))
+				this.@@send(@SEL(0, $array("__bitnot")), $array())
 			else
 				$throw("error")
 		}
@@ -693,12 +657,12 @@
 	@class.__pos = function() {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__pos"))
-				this.@@send(@SEL($array("__pos"), $array()))
+				this.@@send(@SEL(0, $array("__pos")), $array())
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__pos"))
-				this.@@send(@SEL($array("__pos"), $array()))
+				this.@@send(@SEL(0, $array("__pos")), $array())
 			else
 				$throw("error")
 		}
@@ -706,12 +670,12 @@
 	@class.__neg = function() {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__neg"))
-				this.@@send(@SEL($array("__neg"), $array()))
+				this.@@send(@SEL(0, $array("__neg")), $array())
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__neg"))
-				this.@@send(@SEL($array("__neg"), $array()))
+				this.@@send(@SEL(0, $array("__neg")), $array())
 			else
 				$throw("error")
 		}
@@ -720,12 +684,12 @@
 	@class.__get = function(index) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__get@"))
-				this.@@send(@SEL($array("__get"), $array(index)))
+				this.@@send(@SEL(1, $array("__get")), $array(index))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__get@"))
-				this.@@send(@SEL($array("__get"), $array(index)))
+				this.@@send(@SEL(1, $array("__get")), $array(index))
 			else
 				$throw("error")
 		}
@@ -733,27 +697,24 @@
 	@class.__set = function(index, value) {
 		if this.@inst {
 			if $objfield(this.@instance_attrs, $hash("__get@__set@"))
-				this.@@send(@SEL($array("__get", "__set"), $array(index, value)))
+				this.@@send(@SEL(2, $array("__get", "__set")), $array(index, value))
 			else
 				$throw("error")
 		} else {
 			if $objfield(this.@class_attrs, $hash("__get@__set@"))
-				this.@@send(@SEL($array("__get", "__set"), $array(index, value)))
+				this.@@send(@SEL(2, $array("__get", "__set")), $array(index, value))
 			else
 				$throw("error")
 		}
 	}
 	
 	@class.__string = function() {
-		if this.@inst {
-			if $objfield(this.@instance_attrs, $hash("__string"))
-				this.@@send(@SEL($array("__string"), $array()))
-			else
-				this.@name+this.@instance_vars
-		} else {
-			if $objfield(this.@class_attrs, $hash("__string"))
-				this.@@send(@SEL($array("__string"), $array()))
-			else
-				this.@name+this.@class_vars
-		}
+		// TODO: optimize the other methods to work like this
+		var vars = if(this.@inst) this.@instance_vars else this.@class_vars
+		var attrs = if(this.@inst) this.@instance_attrs else this.@class_attrs
+		
+		if $objfield(attrs, $hash("__string"))
+			this.@@send(@SEL(0, $array("__string")), $array())
+		else
+			this.@name+vars
 	}
