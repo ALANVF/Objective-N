@@ -58,6 +58,7 @@
 	+ win_env_changed
 @end
 
+// TODO: finish file interface
 @interface NL_file : ON_Object
 	+ full_path:path
 	+ contents:filename
@@ -124,7 +125,7 @@
 
 // regex
 @interface NL_regexp : ON_Object
-	@property rx (read)
+	@property rx (read, write)
 	
 	+ new:rx
 	+ new:rx options:options
@@ -138,4 +139,17 @@
 	- replace_fun:str with:func
 	- matched:n
 	- matched_pos:n
+@end
+
+@interface NL_module : ON_Object
+	+ read:fn loader:loader
+	+ read_path:path name:name loader:loader
+	+ exec:module
+	+ name:module
+	+ exports:module
+	+ loader:module
+	+ nglobals:module
+	+ global_get:module nth:n
+	+ global_set:module nth:n value:value
+	+ code_size:module
 @end

@@ -435,3 +435,49 @@ var regexp_new = $loader.loadprim("regexp@regexp_new", 1),
 	}
 @end
 }
+
+{
+var module_read = $loader.loadprim("std@module_read", 2),
+	module_read_path = $loader.loadprim("std@module_read_path", 3),
+	module_exec = $loader.loadprim("std@module_exec", 1),
+	module_name = $loader.loadprim("std@module_name", 1),
+	module_exports = $loader.loadprim("std@module_exports", 1),
+	module_loader = $loader.loadprim("std@module_loader", 1),
+	module_nglobals = $loader.loadprim("std@module_nglobals", 1),
+	module_global_get = $loader.loadprim("std@module_global_get", 2),
+	module_global_set = $loader.loadprim("std@module_global_set", 3),
+	module_code_size = $loader.loadprim("std@module_code_size", 1);
+
+@implementation NL_module
+	+ read:($tfunction)fn loader:($tobject)loader {
+		return module_read(fn, loader)
+	}
+	+ read_path:($tarray)path name:($tstring)name loader:($tobject)loader {
+		return module_read_path(path, name, loader)
+	}
+	+ exec:($tabstract)module {
+		return module_exec(module)
+	}
+	+ name:($tabstract)module {
+		return module_name(module)
+	}
+	+ exports:($tabstract)module {
+		return module_exports(module)
+	}
+	+ loader:($tabstract)module {
+		return module_loader(module)
+	}
+	+ nglobals:($tabstract)module {
+		return module_nglobals(module)
+	}
+	+ global_get:($tabstract)module nth:($tint)n {
+		return module_global_get(module, n)
+	}
+	+ global_set:($tabstract)module nth:($tint)n value:value {
+		module_global_set(module, n, value)
+	}
+	+ code_size:($tabstract)module {
+		return module_code_size(module)
+	}
+@end
+}

@@ -165,7 +165,7 @@ package object Ast {
 				def toNeko(ctx: Context) = symbol match {
 					case "+" | "-" | "*" | "/" | "%" | "&&" | "||" |
 						"==" | "!=" | ">=" | "<=" | ">" | "<" |
-						"=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&&=" | "||=" => left.toNeko(ctx) + symbol + right.toNeko(ctx)
+						"=" | "+=" | "-="  | "++=" | "--=" | "*=" | "/=" | "%=" | "&&=" | "||=" => left.toNeko(ctx) + symbol + right.toNeko(ctx)
 					case "**" => s"@POW(${left.toNeko(ctx)},${right.toNeko(ctx)})"
 					case "<<" => s"@SHL(${left.toNeko(ctx)},${right.toNeko(ctx)})"
 					case ">>" => s"@SHR(${left.toNeko(ctx)},${right.toNeko(ctx)})"

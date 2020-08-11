@@ -162,7 +162,7 @@ object Main extends App {
 			op2 ~ (
 				("=" ~> op2).+ ^^ Left.apply
 					|
-				("+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "<<=" | ">>=" | "&=" | "|=" | "^=" | "&&=" | "||=") ~ op2 ^^ Right.apply
+				("+=" | "-="  | "++=" | "--=" | "*=" | "/=" | "%=" | "**=" | "<<=" | ">>=" | "&=" | "|=" | "^=" | "&&=" | "||=") ~ op2 ^^ Right.apply
 			).? ^^ {
 				case left ~ None => left
 				case left ~ Some(Left(right: List[Expr])) => right.foldLeft(left) {case (l, r) => Expr.Op.Infix(l, "=", r)}
@@ -421,5 +421,4 @@ object Main extends App {
 			s"neko ${args(0)}.n".!
 		}
 	}
-	
 }
