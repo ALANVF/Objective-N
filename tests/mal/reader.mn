@@ -6,6 +6,7 @@
 	- init
 	- next
 	- peek
+	- eof
 @end
 
 @implementation Reader
@@ -20,15 +21,21 @@
 	}
 	
 	- next {
-		this->position += 1
-		return this->tokens[this->position - 1]
+		if [this eof]
+			$throw("No more tokens!")
+		else
+			return this->tokens[this->position ++= 1]
 	}
 	
 	- peek {
-		return if [this->tokens count] > this->position
-			this->tokens[this->position]
-		else
+		return if [this eof]
 			nil
+		else
+			this->tokens[this->position]
+	}
+	
+	- eof {
+		return [this->tokens count] <= this->position
 	}
 @end
 
@@ -44,7 +51,7 @@ function tokenize(ON_String str) {
 		
 		[regex replace_fun:_str
 				      with:^(rx) {
-			$objget(_regex, $hash("@instance_vars")).rx = rx
+			[_regex rx:rx]
 			try [matches addValue:@[@([_regex matched:0]), @([_regex matched:1])]] catch _ {}
 			try [ranges addValue:@[[_regex matched_pos:0], [_regex matched_pos:1]]] catch _ {}
 			return ""
@@ -76,7 +83,7 @@ function read_atom(Reader rdr) {
 		
 		[regex replace_fun:_str
 					  with:^(rx) {
-			$objget(_regex, $hash("@instance_vars")).rx = rx
+			[_regex rx:rx]
 			try [matches addValue:@[
 				@([_regex matched:0]),
 				@([_regex matched:1]),
@@ -134,49 +141,66 @@ function read_atom(Reader rdr) {
 		}
 	}
 	
-	$throw("read_atom: invalid token `" + $string(token) + "`")
+	$throw("read_atom: Invalid token `" + $string(token) + "`")
 }
 
 function read_list(Reader rdr, $tstring start, $tstring end) {
 	var token = [rdr next], ast = [ON_MutableArray array]
 	
-	if [token characterAtIndex:0] != start
-		$throw("expected '" + start + "'")
+	if [token raw] != start
+		$throw("Expected '" + start + "'")
 	
-	while (token = [rdr peek]) && [token characterAtIndex:0] != end {
+	while ![rdr eof] && (token = [rdr peek]) != nil && [token raw] != end {
 		[ast addValue:read_form(rdr)]
 	}
 	
 	if !token
-		$throw("expected '" + end + "', got EOF")
+		$throw("Expected '" + end + "', got EOF")
 	
 	[rdr next]
+	
 	return [ast ON_Array]
 }
 
 function read_form(Reader rdr) {
 	var token = [rdr peek]
-	
-	return switch [token characterAtIndex:0] {
-		"'"  => [rdr next] && @[[MalSymbol stringWithString:@"quote"], read_form(rdr)]
-		"`" => [rdr next] && @[[MalSymbol stringWithString:@"quasiquote"], read_form(rdr)]
-		"~" => [rdr next] && if [token isEqualToString:@"~@"]
-									@[[MalSymbol stringWithString:@"splice-unquote"], read_form(rdr)]
-								else
-									@[[MalSymbol stringWithString:@"unquote"], read_form(rdr)]
-		"^" => [rdr next] && {var meta = read_form(rdr); @[[MalSymbol stringWithString:@"with-meta"], read_form(rdr), meta]}
-		"@" => [rdr next] && @[[MalSymbol stringWithString:@"deref"], read_form(rdr)]
+	if token == null || token == nil || [rdr eof] $throw("error!")
+	return switch [token raw] {
+		"'" => {
+			[rdr next]
+			@[[MalSymbol stringWithString:@"quote"], read_form(rdr)]
+		}
+		"`" => {
+			[rdr next]
+			@[[MalSymbol stringWithString:@"quasiquote"], read_form(rdr)]
+		}
+		"~" => {
+			[rdr next]
+			if [token isEqualToString:@"~@"]
+				@[[MalSymbol stringWithString:@"splice-unquote"], read_form(rdr)]
+			else
+				@[[MalSymbol stringWithString:@"unquote"], read_form(rdr)]
+		}
+		"^" => {
+			[rdr next]
+			var meta = read_form(rdr)
+			@[[MalSymbol stringWithString:@"with-meta"], read_form(rdr), meta]
+		}
+		"@" => {
+			[rdr next]
+			@[[MalSymbol stringWithString:@"deref"], read_form(rdr)]
+		}
 		
 		// lists
-		")" => $throw("unexpected ')'")
+		")" => $throw("Unexpected ')'")
 		"(" => read_list(rdr, "(", ")")
 		
 		// vectors
-		"]" => $throw("unexpected ']'")
+		"]" => $throw("Unexpected ']'")
 		"[" => [MalVector fromArray:read_list(rdr, "[", "]")]
 		
 		// hash maps
-		"}" => $throw("unexpected '}'")
+		"}" => $throw("Unexpected '}'")
 		"{" => hash_map(read_list(rdr, "{", "}"))
 		
 		default => read_atom(rdr)
@@ -187,7 +211,7 @@ function read_str(ON_String str) {
 	var tokens = tokenize(str)
 	
 	if [tokens count] == 0
-		$throw("empty token")
-	
-	return read_form([[Reader make] initWithTokens:tokens])
+		$throw("Empty token")
+	else
+		return read_form([[Reader make] initWithTokens:tokens])
 }

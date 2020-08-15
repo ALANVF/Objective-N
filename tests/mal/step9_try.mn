@@ -9,16 +9,15 @@
 #import "../tests/mal/malfunc.mn"
 #import "../tests/mal/core.mn"
 
-function READ(str) {objn_Typecheck(ON_String,str,false)
+function READ(ON_String str) {
 	return read_str(str)
 }
 
 function is_pair(obj) {
-	obj==NULL && {return false}
-	[obj isKindOfClass:ON_Array] && [obj count] > 0
+	return obj != NULL && [obj isKindOfClass:ON_Array] && [obj count] > 0
 }
 
-function quasiquote(ast) {objn_Typecheck(ON_Object,ast,false)
+function quasiquote(ON_Object ast) {
 	if !is_pair(ast)
 		return @[[MalSymbol new:@"quote"], ast]
 	else {
@@ -34,11 +33,12 @@ function quasiquote(ast) {objn_Typecheck(ON_Object,ast,false)
 	}
 }
 
-function is_macro_call(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function is_macro_call(ON_Object ast, Env env) {
 	if list_Q(ast) {
 		if [ast[0] isKindOfClass:MalSymbol] && [env find:ast[0]] {
 			var mf = [env get:ast[0]]
-			return false if $typeof(mf)!=$tobject
+			if $typeof(mf)!=$tobject
+				return false
 			if [mf isKindOfClass:MalFunc]
 				return [mf isMacro]
 		}
@@ -46,7 +46,7 @@ function is_macro_call(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,f
 	return false
 }
 
-function macroexpand(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function macroexpand(ON_Object ast, Env env) {
 	while is_macro_call(ast, env)
 		ast = [[env get:ast[0]] apply:_rest(ast)]
 	
@@ -55,15 +55,15 @@ function macroexpand(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,fal
 
 
 
-function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function eval_ast(ON_Object ast, Env env) {
 	if [ast isKindOfClass:MalSymbol] {
 		return [env get:ast]
 	} else if [ast isKindOfClass:ON_Array] {
 		var newList = [ast arrayWithFunction:^(v) {EVAL(v, env)}]
-		if [ast isKindOfClass:MalVector]
-			return [MalVector fromArray:newList]
+		return if [ast isKindOfClass:MalVector]
+			[MalVector fromArray:newList]
 		else
-			return newList
+			newList
 	} else if [ast isKindOfClass:ON_Dictionary] {
 		var newDict = [ON_MutableDictionary dictionary]
 		
@@ -76,7 +76,7 @@ function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false)
 	}
 }
 
-function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function EVAL(ON_Object ast, Env env) {
 	while true {
 		if !list_Q(ast)
 			return eval_ast(ast, env)
@@ -159,11 +159,11 @@ function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);obj
 	}
 }
 
-function PRINT(exp) {//objn_Typecheck($array(ON_Null,ON_Object),exp,false)
+function PRINT(ON_Object exp) {
 	return _pr_str(exp, true)
 }
 
-function REP(line, env) {objn_Typecheck(ON_String,line,false);objn_Typecheck(Env,env,false)
+function REP(ON_String line, Env env) {
 	return PRINT(EVAL(READ(line), env))
 }
 
@@ -190,25 +190,29 @@ function main() {
 	REP(@"(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))", repl_env)
 	REP(@"(defmacro! or (fn* (& xs) (eval (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))) ))", repl_env)
 	
-	if [args count] > 1 {
-		try
-			REP(@("(load-file \"" + [args[1] raw] + "\")"), repl_env)
-		catch e
+	if [args count] > 0 {
+		try {
+			REP(@("(load-file \"" + [args[0] raw] + "\")"), repl_env)
+		} catch e {
 			$print("Error: ", e, "\n")
+		}
 		
 		return NULL
 	}
 	
-	while true {
+	var exnCount = 0
+	while exnCount < 100 {
 		var rawline = _readline("user> ")
-		if rawline == "" {break}
 		var line = @(rawline)
 		if [line length] == 0 continue
 		
-		try
+		try {
 			$print(REP(line, repl_env), "\n")
-		catch e
+			exnCount = 0
+		} catch e {
 			$print("Exception: ", e, " : ", $excstack(), "\n")
+			exnCount += 1
+		}
 	}
 }
 

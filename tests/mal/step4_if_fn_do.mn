@@ -9,19 +9,19 @@
 #import "../tests/mal/malfunc.mn"
 #import "../tests/mal/core.mn"
 
-function READ(str) {objn_Typecheck(ON_String,str,false)
+function READ(ON_String str) {
 	return read_str(str)
 }
 
-function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function eval_ast(ON_Object ast, Env env) {
 	if [ast isKindOfClass:MalSymbol] {
 		return [env get:ast]
 	} else if [ast isKindOfClass:ON_Array] {
 		var newList = [ast arrayWithFunction:^(v) {EVAL(v, env)}]
-		if [ast isKindOfClass:MalVector]
-			return [MalVector fromArray:newList]
+		return if [ast isKindOfClass:MalVector]
+			[MalVector fromArray:newList]
 		else
-			return newList
+			newList
 	} else if [ast isKindOfClass:ON_Dictionary] {
 		var newDict = [ON_MutableDictionary dictionary]
 		
@@ -34,7 +34,7 @@ function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false)
 	}
 }
 
-function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function EVAL(ON_Object ast, Env env) {
 	if !list_Q(ast)
 		return eval_ast(ast, env)
 	
@@ -57,12 +57,14 @@ function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);obj
 	} else if [a0sym isEqualToString:@"if"] {
 		var cond = EVAL(ast[1], env)
 		if objn_Typecheck($array(ON_Null,MalFalse),cond,true) {
-			if [ast count] > 3
+			if [ast count] > 3 {
 				return EVAL(ast[3], env)
-			else
+			} else {
 				return NULL
-		} else
+			}
+		} else {
 			return EVAL(ast[2], env)
+		}
 	} else if [a0sym isEqualToString:@"fn*"] {
 		return [[MalFunc make] init:ast[2] env:env params:ast[1]]
 	} else {
@@ -76,11 +78,11 @@ function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);obj
 	}
 }
 
-function PRINT(exp) {objn_Typecheck($array(ON_Null,ON_Object),exp,false)
+function PRINT(ON_Object exp) {
 	return _pr_str(exp, true)
 }
 
-function REP(line, env) {objn_Typecheck(ON_String,line,false);objn_Typecheck(Env,env,false)
+function REP(ON_String line, Env env) {
 	return PRINT(EVAL(READ(line), env))
 }
 
@@ -95,7 +97,6 @@ function main() {
 	
 	while true {
 		var rawline = _readline("user> ")
-		if rawline == "" {break}
 		var line = @(rawline)
 		if [line length] == 0 continue
 		$print(REP(line, repl_env), "\n")

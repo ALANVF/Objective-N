@@ -19,8 +19,8 @@
 @end
 
 function apply($tfunction | MalFunc f, ON_Array args) {
-	if $typeof(f) == $tfunction
-		return f(args)
+	return if $typeof(f) == $tfunction
+		f(args)
 	else
-		return [f apply:args]
+		[f apply:args]
 }

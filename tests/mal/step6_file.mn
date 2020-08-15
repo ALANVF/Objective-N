@@ -9,19 +9,19 @@
 #import "../tests/mal/malfunc.mn"
 #import "../tests/mal/core.mn"
 
-function READ(str) {objn_Typecheck(ON_String,str,false)
+function READ(ON_String str) {
 	return read_str(str)
 }
 
-function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function eval_ast(ON_Object ast, Env env) {
 	if [ast isKindOfClass:MalSymbol] {
 		return [env get:ast]
 	} else if [ast isKindOfClass:ON_Array] {
 		var newList = [ast arrayWithFunction:^(v) {EVAL(v, env)}]
-		if [ast isKindOfClass:MalVector]
-			return [MalVector fromArray:newList]
+		return if [ast isKindOfClass:MalVector]
+			[MalVector fromArray:newList]
 		else
-			return newList
+			newList
 	} else if [ast isKindOfClass:ON_Dictionary] {
 		var newDict = [ON_MutableDictionary dictionary]
 		
@@ -34,7 +34,7 @@ function eval_ast(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false)
 	}
 }
 
-function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);objn_Typecheck(Env,env,false)
+function EVAL(ON_Object ast, Env env) {
 	while true {
 		if !list_Q(ast)
 			return eval_ast(ast, env)
@@ -56,7 +56,6 @@ function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);obj
 			env = let_env
 			ast = ast[2] // TCO
 		} else if [a0sym isEqualToString:@"do"] {
-			//return [eval_ast(_rest(ast), env) lastValue]
 			eval_ast([ast subarrayWithRange:ON_MakeRange(1, [ast count] - 2)], env)
 			ast = [ast lastValue] // TCO
 		} else if [a0sym isEqualToString:@"if"] {
@@ -91,11 +90,11 @@ function EVAL(ast, env) {objn_Typecheck($array(ON_Null,ON_Object),ast,false);obj
 	}
 }
 
-function PRINT(exp) {objn_Typecheck($array(ON_Null,ON_Object),exp,false)
+function PRINT(ON_Object exp) {
 	return _pr_str(exp, true)
 }
 
-function REP(line, env) {objn_Typecheck(ON_String,line,false);objn_Typecheck(Env,env,false)
+function REP(ON_String line, Env env) {
 	return PRINT(EVAL(READ(line), env))
 }
 
@@ -104,11 +103,8 @@ function main() {
 		core_ns = [Core ns],
 		args = [@($loader.args) arrayWithFunction:^(v) {@(v)}]
 	
-	var k = [core_ns allKeys],
-		v = [core_ns allValues]
-	
-	for(var i = 0; i < [core_ns count]; i += 1)
-		[repl_env set:[MalSymbol new:k[i]] val:v[i]]
+	for(var k, v in core_ns)
+		[repl_env set:[MalSymbol new:k] val:v]
 	
 	[repl_env set:[MalSymbol new:@"eval"] val:^(args) {
 		return EVAL(args[0], repl_env)
@@ -123,25 +119,29 @@ function main() {
 	REP(@"(def! not (fn* (a) (if a false true)))", repl_env)
 	REP(@"(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))", repl_env)
 	
-	if [args count] > 1 {
-		try
-			REP(@("(load-file \"" + [args[1] raw] + "\")"), repl_env)
-		catch e
+	if [args count] > 0 {
+		try {
+			REP(@("(load-file \"" + [args[0] raw] + "\")"), repl_env)
+		} catch e {
 			$print("Error: ", e, "\n")
+		}
 		
 		return NULL
 	}
 	
-	while true {
+	var exnCount = 0
+	while exnCount < 100 {
 		var rawline = _readline("user> ")
-		if rawline == "" {break}
 		var line = @(rawline)
 		if [line length] == 0 continue
 		
-		try
+		try {
 			$print(REP(line, repl_env), "\n")
-		catch e
+			exnCount = 0
+		} catch e {
 			$print("Exception: ", e, " : ", $excstack(), "\n")
+			exnCount += 1
+		}
 	}
 }
 

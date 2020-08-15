@@ -4,28 +4,27 @@
 
 #import "../tests/mal/mal_readline.mn"
 
-function READ(str) {objn_Typecheck(ON_String,str,false)
+function READ(ON_String str) {
 	return str
 }
 
-function EVAL(ast, env) {objn_Typecheck(ON_String,ast,false);objn_Typecheck(ON_String,env,false)
+function EVAL(ON_Object ast, ON_String env) {
 	return ast
 }
 
-function PRINT(exp) {objn_Typecheck(ON_String,exp,false)
+function PRINT(ON_Object exp) {
 	return exp
 }
 
-function REP(line) {objn_Typecheck(ON_String,line,false)
-	return PRINT(EVAL(READ(line), @""));
+function REP(ON_String line) {
+	return PRINT(EVAL(READ(line), @""))
 }
 
 function main() {
 	while true {
 		var rawline = _readline("user> ")
-		if rawline == null {break}
 		var line = @(rawline)
-		if [line length] == 0 {continue}
+		if [line length] == 0 continue
 		$print(REP(line), "\n")
 	}
 }

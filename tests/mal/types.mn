@@ -75,7 +75,7 @@
 	+ new:str {[this stringWithString:str]}
 @end
 
-function string_Q(ON_Object obj) {//obj==null && {return false}
+function string_Q(ON_Object obj) {
 	if [obj isKindOfClass:ON_String] {
 		var s = [obj ON_String]
 		if [s isKindOfClass:MalSymbol] {
@@ -87,8 +87,8 @@ function string_Q(ON_Object obj) {//obj==null && {return false}
 
 // lists
 
-function list_Q(obj) {//obj==null && {return false}
-	return [obj isKindOfClass:ON_Array] && [obj class] != MalVector
+function list_Q(obj) {
+	return [obj isKindOfClass:ON_Array] && ![obj isKindOfClass:MalVector]
 }
 
 function _rest(ON_Array obj) {
@@ -143,7 +143,7 @@ function sequential_Q(ON_Object obj) {
 function equal_Q(ON_Object a, ON_Object b) {
 	if !([a class] == [b class]
 			||
-		(objn_Typecheck(ON_Array, a, true) && objn_Typecheck(ON_Array, b, true))
+		([a isKindOfClass:ON_Array] && [a isKindOfClass:ON_Array])
 			||
 		(objn_Typecheck($array(ON_Integer,ON_Float), a, true) && objn_Typecheck($array(ON_Integer,ON_Float), b, true))
 			||
@@ -152,11 +152,11 @@ function equal_Q(ON_Object a, ON_Object b) {
 		return false
 	}
 	
-	if objn_Typecheck(MalTrue, a, true)
+	if [a isKindOfClass:MalTrue]
 		return true
-	else if objn_Typecheck(MalFalse, a, true)
+	else if [a isKindOfClass:MalFalse]
 		return true
-	else if objn_Typecheck($array(ON_Integer,ON_Float), a, true)
+	else if [a isKindOfClass:ON_Integer] || [a isKindOfClass:ON_Float]
 		return [a raw] == [b raw]
 	else
 		return a == b

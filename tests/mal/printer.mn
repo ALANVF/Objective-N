@@ -1,5 +1,5 @@
 function _pr_str(obj, $tbool print_readably) {
-	return if o == NULL
+	return if obj == NULL
 		@"nil"
 	else if objn_Typecheck(MalTrue,obj,true)
 		@"true"
@@ -20,23 +20,18 @@ function _pr_str(obj, $tbool print_readably) {
 			obj
 		}
 	} else if objn_Typecheck(ON_Array,obj,true) {
-		var elems = [ON_MutableArray array]
-		
-		for(var i = 0; i < [obj count]; i += 1)
-			[elems addValue:_pr_str(obj[i], print_readably)]
+		var elems = [obj arrayWithFunction:^(value) {_pr_str(value, print_readably)}]
 		
 		if objn_Typecheck(MalVector,obj,true)
 			@("[" + [[elems componentsJoinedByString:@" "] raw] + "]")
 		else
 			@("(" + [[elems componentsJoinedByString:@" "] raw] + ")")
 	} else if objn_Typecheck(ON_Dictionary,obj,true) {
-		var dict = [ON_Dictionary dictionaryWithDictionary:obj]
 		var elems = [ON_MutableArray array]
-		var keys = [dict allKeys]
 		
-		for(var i = 0; i < [keys count]; i += 1) {
-			[elems addValue:_pr_str(keys[i], print_readably)]
-			[elems addValue:_pr_str(dict[keys[i]], print_readably)]
+		for(var key, value in obj) {
+			[elems addValue:_pr_str(key, print_readably)]
+			[elems addValue:_pr_str(value, print_readably)]
 		}
 		
 		@("{" + [[elems componentsJoinedByString:@" "] raw] + "}")
