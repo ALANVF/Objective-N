@@ -418,7 +418,7 @@ object Main extends App {
 			new PrintWriter(args(0) + ".neko") {write(output); close}
 			
 			s"nekoc ${args(0)}.neko".!
-			s"neko ${args(0)}.n".!
+			s"neko ${args(0)}.n ${args.tail.mkString(" ")}".!
 		}
 	}
 }
