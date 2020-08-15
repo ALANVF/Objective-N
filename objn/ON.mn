@@ -3,7 +3,7 @@
 
 {var _ = [ON_Nil new]
 @implementation ON_Nil
-	+ make {return _} // small hack
+	+ make {_} // small hack
 	- ON_String {@"nil"}
 	
 	- __bool {false}
@@ -13,7 +13,7 @@
 
 {var _ = [ON_Null new]
 @implementation ON_Null
-	+ make {return _} // small hack
+	+ make {_} // small hack
 	- ON_String {@"NULL"}
 	
 	- __bool {false}
@@ -41,7 +41,7 @@
 		else if $typeof(value) == $tint
 			$compare(this->raw, value)
 		else
-			false
+			null
 	}
 	- isEqual:value {
 		return [this compare:value] == 0
@@ -82,7 +82,7 @@
 		else if $typeof(value) == $tfloat
 			$compare(this->raw, value)
 		else
-			false
+			null
 	}
 	- isEqual:value {
 		return [this compare:value] == 0
@@ -165,22 +165,22 @@
 		
 		var l = $loader.loadprim("std@string_split", 2)(this->raw, str)
 		
-		if l == null
-			return @[[this copy]]
+		return if l == null
+			@[[this copy]]
 		else if l[1] == null
-			return @[@(l[0])]
+			@[@(l[0])]
 		else if l[1][1] == null
-			return @[
+			@[
 				[ON_String stringWithNekoString:l[0]],
 				[ON_String stringWithNekoString:l[1][0]]
 			]
 		else {
 			var dig = $array(null)
 			dig[0] = ^(arr, length) {
-				if arr[1] == null
-					return length + 1
+				return if arr[1] == null
+					length + 1
 				else
-					return dig[0](arr[1], length + 1)
+					dig[0](arr[1], length + 1)
 			}
 			
 			var out = $amake(dig[0](l, 1))
@@ -193,7 +193,7 @@
 			if out[$asize(out)-1] == null
 			out = $asub(out, 0, $asize(out)-1)
 			
-			return @(out)
+			@(out)
 		}
 	}
 	//- componentsSeparatedByCharactersInSet:set
@@ -283,23 +283,23 @@
 		return [NL_UTF8 compare:this->raw with:[str raw]] == 0
 	}
 	- isEqual:value {
-		if objn_Typecheck(ON_String, value, true)
-			return [this isEqualToString:value]
+		return if objn_Typecheck(ON_String, value, true)
+			[this isEqualToString:value]
 		else
-			return this == value
+			this == value
 	}
 	
 	- commonPrefixWithString:(ON_String)str {
 		return [this commonPrefixWithString:str caseInsensitive:false]
 	}
 	- commonPrefixWithString:(ON_String)str caseInsensitive:($tbool)ci {
-		if this->raw == "" || [str raw] == "" {
-			return @""
+		return if this->raw == "" || [str raw] == "" {
+			@""
 		} else if [this length] == 1 || [str length] == 1 {
 			if [[this substringToIndex:1] compare:[str substringToIndex:1] caseInsensitive:ci] == 0
-				return [this substringToIndex:1]
+				[this substringToIndex:1]
 			else
-				return @""
+				@""
 		} else {
 			var out = 0
 			var len = if [this length] <= [str length] [this length] else [str length],
@@ -318,7 +318,7 @@
 					break
 			}
 			
-			return [this substringToIndex:out]
+			[this substringToIndex:out]
 		}
 	}
 	- capitalizedString {
@@ -419,10 +419,20 @@
 //upper_letter = $array(),
 //letter = $aconcat($array(lower_letter, upper_letter)),
 //punct = $array(),
-var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i=0;i<27;i+=1)_[i+27]=i+97;_},
+var alpha = {
+		var _ = $amake(53)
+		for(var i = 0; i < 27; i += 1) _[i] = i + 65
+		_[26] = 95
+		for(var i = 0; i < 27; i += 1) _[i + 27] = i + 97
+		_
+	},
 	number = $array(48, 49, 50, 51, 52, 53, 54, 55, 56, 57),
 	alnum = $aconcat($array(alpha, number)),
-	control = {var _=$amake(33);for(var i=0;i<33;i+=1)_[i]=i;_},
+	control = {
+		var _ = $amake(33)
+		for(var i = 0; i < 33; i += 1) _[i] = i
+		_
+	},
 	newline = $array(10, 11, 12, 13),
 	white = $array(9, 32),
 	white_and_newline = $aconcat($array(white, newline)),
@@ -471,7 +481,11 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	+ characterSetWithRange:(ON_Range)range {
 		var _ = [this make]
-		$objget(_, $hash("@instance_vars")).codes = {var a=$amake([range length]+1);for(var i=0;i<=[range length];i+=1)a[i]=[range position]+i;a}
+		$objget(_, $hash("@instance_vars")).codes = {
+			var a = $amake([range length]+1)
+			for(var i = 0; i <= [range length]; i += 1) a[i] = [range position] + i
+			a
+		}
 		return _
 	}
 	
@@ -551,9 +565,9 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		var out = [ON_Array arrayWithArray:this
 		                         copyItems:true]
 		switch $nargs(func) {
-			case 1: for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i])
-			case 2: for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i], i)
-			default: $throw("invalid number arguments for mapping an array!")
+			1 => for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i])
+			2 => for(var i = 0; i < this->count; i += 1) out[i] = func(this->raw[i], i)
+			default => $throw("invalid number arguments for mapping an array!")
 		}
 		
 		return out
@@ -606,21 +620,21 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		this->raw == [array raw] && {return true}
 		
 		for(var i = 0; i < this->count; i += 1)
-			if this->raw[i] == array[i]
-				continue
-			else
+			if this->raw[i] != array[i]
 				return false
 		
 		return true
 	}
 	- isEqual:value {
-		if objn_Typecheck(ON_Array, value, true)
-			return [this isEqualToArray:value]
+		return if objn_Typecheck(ON_Array, value, true)
+			[this isEqualToArray:value]
 		else
-			return this == value
+			this == value
 	}
 	- firstValueCommonWithArray:(ON_Array)array {
-		(!this->count || ![array count]) && {return nil}
+		if !this->count || ![array count]
+			return nil
+		
 		for(var i in this->raw)
 			for(var j in [array raw])
 				if i == j
@@ -630,26 +644,30 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	- makeValuesPerform:($tfunction)func {
 		switch $nargs(func) {
-			case 1: for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i])
-			case 2: for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i], i)
-			default: $throw("invalid number arguments for mapping an array!")
+			1 => for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i])
+			2 => for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i], i)
+			default => $throw("invalid number arguments for mapping an array!")
 		}
 	}
 	- componentsJoinedByString:($tstring | ON_String)sep {
-		this->count || {return @""}
-		this->count==1 && {return @($string(this->raw[0]))}
-		sep = $string(sep)
-		var out = $string(this->raw[0])
-		for(var i = 1; i < this->count; i += 1) out += sep + $string(this->raw[i])
-		return @(out)
+		return switch this->count {
+			0 => @""
+			1 => @($string(this->raw[0]))
+			default => {
+				sep = $string(sep)
+				var out = $string(this->raw[0])
+				for(var i = 1; i < this->count; i += 1) out += sep + $string(this->raw[i])
+				@(out)
+			}
+		}
 	}
 	
 	- subarrayWithRange:(ON_Range)range {
-		//([range position]>this->count||[range max]>this->count) || $throw("Range "+range+" out of bounds!")
-		[range length] || {return @[]}
-		[range length]==1 && {return @[this->raw[[range max]-1]]}
-		
-		return @($acopy($asub(this->raw, [range position], [range length])))
+		return switch [range length] {
+			0 => @[]
+			1 => @[this->raw[[range max]-1]]
+			default => @($acopy($asub(this->raw, [range position], [range length])))
+		}
 	}
 	
 	- ON_Array {this}
@@ -682,21 +700,23 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		if index < 0 || index > this->count
 			$throw("out of bounds!")
 		
-		switch index {
-			case 0: this->raw = $aconcat($array($array(value), this->raw))
-			case this->count: this->raw = $aconcat($array(this->raw, $array(value)))
-			default: {
-				var head = $asub([this raw], 0, index),
-					tail = $asub([this raw], index+1, $asize(this->raw)-index+1)
+		this->raw = $aconcat(switch index {
+			0 => $array($array(value), this->raw)
+			this->count => $array(this->raw, $array(value))
+			default => {
+				var head = $asub(this->raw, 0, index),
+					tail = $asub(this->raw, index+1, $asize(this->raw)-index+1)
 				
-				this->raw = $aconcat($array(head, $array(value), tail))
+				$array(head, $array(value), tail)
 			}
-		}
+		})
 		
 		this->count += 1
 	}
 	//- insertValues:values atIndexes:indexes
-	- ON_Array {return [ON_Array arrayWithArray:this copyItems:false]}
+	- ON_Array {
+		return [ON_Array arrayWithArray:this copyItems:false]
+	}
 @end
 
 @implementation ON_Dictionary
@@ -746,7 +766,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		for(var i = 0; i < $asize(args); i += 2)
 			$objset(this->raw, [args[i+1] hash], args[i])
 		
-		this->count = $asize(args) % 2
+		this->count = $int($asize(args) / 2)
 		
 		return this
 	}
@@ -777,9 +797,9 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	- enumerateKeysAndValuesUsingBlock:($tfunction)block {
 		var f = $objfields(this->raw)
 		switch $asize(f) {
-			case 0: return null
-			case 1: block(@($field(f[0])), $objget(this->raw, f[0]))
-			default: for(var i = 0; i < $asize(f); i += 1) block(@($field(f[i])), $objget(this->raw, f[i]))
+			0 => null
+			1 => block(@($field(f[0])), $objget(this->raw, f[0]))
+			default => for(var i = 0; i < $asize(f); i += 1) block(@($field(f[i])), $objget(this->raw, f[i]))
 		}
 	}
 	
@@ -807,29 +827,26 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 		var obj1f = $objfields(obj1), obj2f = $objfields(obj2)
 		
 		for(var i = 0; i < $asize(obj1f); i += 1) {
-			if obj1f[i] != obj2f[i]
-				return false
-			
-			if $objget(obj1, obj1f[i]) != $objget(obj2, obj2f[i])
+			if obj1f[i] != obj2f[i] || $objget(obj1, obj1f[i]) != $objget(obj2, obj2f[i])
 				return false
 		}
 		
 		return true
 	}
 	- isEqual:value {
-		if objn_Typecheck(ON_Dictionary, value, true)
-			return [this isEqualToDictionary:value]
+		return if objn_Typecheck(ON_Dictionary, value, true)
+			[this isEqualToDictionary:value]
 		else
-			return this == value
+			this == value
 	}
 	
 	- ON_Enumerator {[this keyEnumerator]}
 	- ON_Enumerator2 {@[[this keyEnumerator], [this valueEnumerator]]}
 	- ON_String {
 		return switch this->count {
-			case 0: @"@{ }"
-			case 1: @("@{ @\"" + $field($objfields(this->raw)[0]) + "\": " + $objget(this->raw, $objfields(this->raw)[0]) + " }")
-			default: {
+			0 => @"@{ }"
+			1 => @("@{ @\"" + $field($objfields(this->raw)[0]) + "\": " + $objget(this->raw, $objfields(this->raw)[0]) + " }")
+			default => {
 				var out = "@{ ", i = 0
 				for(var k, v in this->raw)
 					if (i += 1)-1 == [this count]
@@ -837,7 +854,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 					else
 						out += "@\"" + k + "\": " + $string(v) + ", "
 				
-				return @(out + " }")
+				@(out + " }")
 			}
 		}
 	}
@@ -880,16 +897,10 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 	}
 	
 	- containsLocation:($tint)value {
-		if value >= this->position && value < this->position + this->length
-			return true
-		else
-			return false
+		return value >= this->position && value < this->position + this->length
 	}
 	- equalsRange:(ON_Range)range {
-		if this->position == [range position] && this->length == [range length]
-			return true
-		else
-			return false
+		return this->position == [range position] && this->length == [range length]
 	}
 	- max {
 		return this->position + this->length
@@ -941,7 +952,7 @@ var alpha = {var _=$amake(53);for(var i=0;i<27;i+=1)_[i]=i+65;_[26]=95;for(var i
 function ON_Log(args...) {
 	for(var arg in args) {
 		switch $typeof(arg) {
-			case $tobject: {
+			$tobject => {
 				if $objgetproto(arg) == $objgetproto(ON_Object) {
 					if [arg isKindOfClass:ON_String]
 						$print("\"", [arg raw], "\"\n")
@@ -953,12 +964,8 @@ function ON_Log(args...) {
 					$print(arg, "\n")
 				}
 			}
-			
-			case $tstring:
-				$print("\"", arg, "\"\n")
-			
-			default:
-				$print(arg, "\n")
+			$tstring => $print("\"", arg, "\"\n")
+			default => $print(arg, "\n")
 		}
 	}
 }
