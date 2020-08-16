@@ -16,7 +16,29 @@
 	- __string
 @end
 
-@interface ON_Integer : ON_Object
+@interface ON_Number : ON_Object
+	+ newWithValue:value
+	
+	- __add:rval
+	- __radd:lval
+	- __sub:rval
+	- __rsub:lval
+	- __mult:rval
+	- __rmult:lval
+	- __div:rval
+	- __rdiv:lval
+	- __mod:rval
+	- __rmod:lval
+	- __pow:rval
+	- __rpow:lval
+	// ...
+	
+	- __pos
+	- __neg
+	// ...
+@end
+
+@interface ON_Integer : ON_Number
 	@property raw (read) = 0;
 	
 	+ integerWithNekoInteger:int
@@ -30,15 +52,11 @@
 	- ON_Float
 	- ON_String
 	
-	- __add:rval
-	- __radd:lval
-	// ...
-	
 	- __bool
 	- __string
 @end
 
-@interface ON_Float : ON_Object
+@interface ON_Float : ON_Number
 	@property raw (read) = 0.0;
 	
 	+ floatWithNekoFloat:float
@@ -51,10 +69,6 @@
 	- ON_Integer
 	- ON_Float
 	- ON_String
-	
-	- __add:rval
-	- __radd:lval
-	// ...
 	
 	- __bool
 	- __string

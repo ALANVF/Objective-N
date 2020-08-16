@@ -21,16 +21,78 @@
 @end
 }
 
+@implementation ON_Number
+	+ newWithValue:($tint | $tfloat)value {
+		return if $typeof(value) == $tint {
+			[ON_Integer integerWithNekoInteger:value]
+		} else {
+			[ON_Float floatWithNekoFloat:value]
+		}
+	}
+	
+	- __add:($tint | $tfloat | ON_Number)rval {
+		return [ON_Number newWithValue:this->raw + (if $typeof(rval) == $tobject [rval raw] else rval)]
+	}
+	- __radd:($tint | $tfloat | ON_Number)lval {
+		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) + this->raw]
+	}
+	
+	- __sub:($tint | $tfloat | ON_Number)rval {
+		return [ON_Number newWithValue:this->raw - (if $typeof(rval) == $tobject [rval raw] else rval)]
+	}
+	- __rsub:($tint | $tfloat | ON_Number)lval {
+		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) - this->raw]
+	}
+	
+	- __mult:($tint | $tfloat | ON_Number)rval {
+		return [ON_Number newWithValue:this->raw * (if $typeof(rval) == $tobject [rval raw] else rval)]
+	}
+	- __rmult:($tint | $tfloat | ON_Number)lval {
+		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) * this->raw]
+	}
+	
+	// maybe revisit this idk
+	- __div:($tint | $tfloat | ON_Number)rval {
+		return [ON_Number newWithValue:this->raw / (if $typeof(rval) == $tobject [rval raw] else rval)]
+	}
+	- __rdiv:($tint | $tfloat | ON_Number)lval {
+		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) / this->raw]
+	}
+	
+	- __mod:($tint | $tfloat | ON_Number)rval {
+		return [ON_Number newWithValue:this->raw % (if $typeof(rval) == $tobject [rval raw] else rval)]
+	}
+	- __rmod:($tint | $tfloat | ON_Number)lval {
+		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) % this->raw]
+	}
+	
+	// maybe revisit this idk
+	- __pow:($tint | $tfloat | ON_Number)rval {
+		return [ON_Number newWithValue:this->raw ** (if $typeof(rval) == $tobject [rval raw] else rval)]
+	}
+	- __rpow:($tint | $tfloat | ON_Number)lval {
+		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) ** this->raw]
+	}
+	
+	// ...
+	
+	- __pos {
+		return this
+	}
+	
+	- __neg {
+		return [ON_Number newWithValue:-this->raw]
+	}
+	// ...
+@end
+
 @implementation ON_Integer
 	+ integerWithNekoInteger:int {
 		return [[this make] initWithValue:int]
 	}
 	
-	- initWithValue:($tint | ON_Integer)value {
-		this->raw = if $typeof(value) == $tint
-			value
-		else
-			[value raw]
+	- initWithValue:($tint)value {
+		this->raw = value
 		
 		return this
 	}
@@ -70,8 +132,8 @@
 		return [[this make] initWithValue:float]
 	}
 	
-	- initWithValue:($tfloat | ON_Float)value {
-		this->raw = if $typeof(value) == $tfloat value else [value raw]
+	- initWithValue:($tfloat)value {
+		this->raw = value
 		
 		return this
 	}
@@ -849,7 +911,7 @@ var alpha = {
 			default => {
 				var out = "@{ ", i = 0
 				for(var k, v in this->raw)
-					if (i += 1)-1 == [this count]
+					if (i ++= 1) == [this count]
 						out += "@\"" + k + "\": " + $string(v)
 					else
 						out += "@\"" + k + "\": " + $string(v) + ", "
