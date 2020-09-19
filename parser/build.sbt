@@ -1,7 +1,7 @@
 lazy val root = (project in file(".")).
 	settings(
 		version := "0.0.9",
-		scalaVersion := "2.12.7",
+		scalaVersion := "2.13.3",
 		libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
 		assemblyJarName in assembly := "objn.jar",
 		TaskKey[Unit]("check") := {
