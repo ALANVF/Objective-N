@@ -39,17 +39,18 @@ syn region    objnParen       start="("   end=")"  transparent fold
 syn region    objnBrackets    start="\["  end="\]" transparent fold
 syn region    objnBlock       start="{"   end="}"  transparent fold
 
-syn keyword   objnBuiltin     array amake acopy asize asub ablit aconcat                                     contained
-syn keyword   objnBuiltin     string smake ssize scopy ssub sget sset sblit sfind                            contained
-syn keyword   objnBuiltin     new objsetproto objgetproto objget objset objcall objfield objfields objremove contained
-syn keyword   objnBuiltin     hash field                                                                     contained
-syn keyword   objnBuiltin     nargs call closure apply varargs                                               contained
-syn keyword   objnBuiltin     iadd isub imult idiv isnan isinfinite int float                                contained
-syn keyword   objnBuiltin     getkind iskind                                                                 contained
-syn keyword   objnBuiltin     hkey hnew hresize hget hmem hremove hset hadd hiter hcount hsize               contained
-syn keyword   objnBuiltin     print throw rethrow                                                            contained
-syn keyword   objnBuiltin     istrue not typeof pcompare compare                                             contained
-syn keyword   objnBuiltin     excstack callstack version setresolver loader exports                          contained
+syn keyword   objnBuiltin     array amake acopy asize asub ablit aconcat                                      contained
+syn keyword   objnBuiltin     string smake ssize scopy ssub sblit sfind                                       contained
+syn keyword   objnBuiltin     sget16 sget32 sgetf sgetd sget sset16 sset32 ssetf ssetd sset                   contained
+syn keyword   objnBuiltin     new objsetproto objgetproto objget objset objcall objfield objfields objremove  contained
+syn keyword   objnBuiltin     hash fasthash field                                                             contained
+syn keyword   objnBuiltin     nargs call closure apply varargs                                                contained
+syn keyword   objnBuiltin     iadd isub imult idiv isnan isinfinite isbigendian int float itof itod ftoi dtoi contained
+syn keyword   objnBuiltin     getkind iskind                                                                  contained
+syn keyword   objnBuiltin     hkey hnew hresize hget hmem hremove hset hadd hiter hcount hsize                contained
+syn keyword   objnBuiltin     print throw rethrow                                                             contained
+syn keyword   objnBuiltin     istrue not typeof pcompare compare                                              contained
+syn keyword   objnBuiltin     excstack callstack version setresolver loader exports                           contained
 
 " todo: finish property highlighting
 syn keyword   objnKeyword     break case catch continue default do else for
