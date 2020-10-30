@@ -1,6 +1,8 @@
 package objn
 
-import objn.Ast.{Context, Expr}
+import objn.Ast.{Context, Expr, Statement}
+
+// TODO: add support for classes and complex objects
 
 object Checker {
 	sealed trait Type {
@@ -93,7 +95,9 @@ object Checker {
 		
 		case _: Expr.Selector => TObject
 		
-		case Expr.Block(_) => TUnknown // TODO
+		case Expr.Block(Nil) => TNull
+		case Expr.Block(List(stmt)) => tryGetStmtType(ctx, stmt)
+		case Expr.Block(stmts) => tryGetStmtType(ctx, stmts.last)
 		
 		case Expr.Box(e) => getBoxedType(ctx, tryGetType(ctx, e))
 		
@@ -199,8 +203,16 @@ object Checker {
 			case _ => TUnknown
 		}
 		
+		case Expr.GetIndex(value, index) => (tryGetType(ctx, value), tryGetType(ctx, index)) match {
+			case (TArray(elem), TInt) => elem
+			case (TArray(_), TUnknown) => TUnknown
+			case (TArray(_), _) => TInvalid
+			case (TObject | TUnknown, _) => TUnknown
+			case _ => TInvalid
+		}
+		
 		case Expr.GetField(value, _) => tryGetType(ctx, value) match {
-			case TObject | TUnknown | TUnion(_) => TUnknown
+			case TObject | TUnknown => TUnknown
 			case _ => TInvalid
 		}
 		
@@ -226,8 +238,25 @@ object Checker {
 			case _ => TInvalid
 		}
 		
+		case Expr.If(_, trueBlk) => tryGetStmtType(ctx, trueBlk) | TNull
+		
+		case Expr.IfElse(_, trueBlk, falseBlk) => tryGetStmtType(ctx, trueBlk) | tryGetStmtType(ctx, falseBlk)
+		
+		case Expr.TryCatch(tryStmt, _, catchStmt) => tryGetStmtType(ctx, tryStmt) | tryGetStmtType(ctx, catchStmt)
+		
+		case Expr.Switch(_, Nil) => TNull
+		case Expr.Switch(_, cases) => cases map {
+			case Expr.SwitchCase.Case(_, stmt) => tryGetStmtType(ctx, stmt)
+			case Expr.SwitchCase.Default(stmt) => tryGetStmtType(ctx, stmt)
+		} reduceLeft {_ | _}
+		
 		case _ => TUnknown
 	})
+	
+	def tryGetStmtType(ctx: Context, stmt: Statement): Type = stmt match {
+		case expr: Expr => tryGetType(ctx, expr)
+		case _ => TInvalid
+	}
 	
 	private def reduceUnion(types: Set[Type]): Type = {
 		if(types.size == 1) 
