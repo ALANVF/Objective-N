@@ -1,0 +1,46 @@
+{
+	"name": "language-objn",
+	"displayName": "Objective-N programming language",
+	"description": "Objective-N programming language support",
+	"version": "0.0.1",
+	"publisher": "theangryepicbanana",
+	"engines": {
+		"vscode": "^1.47.3"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"contributes": {
+		"languages": [
+			{
+				"id": "objn",
+				"aliases": [
+					"objective-neko",
+					"objective-n",
+					"objective neko",
+					"objective n",
+					"obj-n",
+					"objn"
+				],
+				"extensions": [
+					".mn",
+					".hn"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "objn",
+				"scopeName": "source.objn",
+				"path": "./syntaxes/objn.json"
+			}
+		]
+	},
+	"dependencies": {
+		"reon-convert": "^0.1.8"
+	},
+	"scripts": {
+		"compile-syntaxes": "reon-convert to-json syntaxes/objn.reon"
+	}
+}

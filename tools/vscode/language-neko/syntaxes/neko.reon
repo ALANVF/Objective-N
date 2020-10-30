@@ -1,0 +1,541 @@
+#(
+	name "Neko"
+	scopeName "source.neko"
+	fileTypes ["neko"]
+	
+	patterns [
+		#(include #empty)
+		#(include #label)
+		#(include #goto)
+		#(include #exprs)
+		#(include #semicolon)
+		#(include #illegal)
+	]
+
+	repository #(
+		empty #(
+			patterns [
+				#(include #line)
+				#(include #space)
+				#(include #line-comment)
+				#(include #doc-comment)
+				#(include #block-comment)
+			]
+		)
+
+		exprs #(
+			patterns [
+				#(include #builtins)
+				#(include #constants)
+				#(include #function)
+				#(include #keywords)
+				#(include #call)
+				#(include #name)
+				#(include #property)
+				#(include #operators)
+				#(include #paren)
+				#(include #subscript)
+				#(include #block-or-object)
+				#(include #illegal)
+			]
+		)
+
+		space #(
+			match "\s+"
+			name "text.neko"
+		)
+
+		line #(
+			match "\n$"
+			name "text.neko"
+		)
+
+		line-comment #(
+			match "//.*$"
+			name "comment.neko"
+		)
+
+		doc-comment #(
+			begin "/\*{2}"
+			beginCaptures #(
+				0 #(name "comment.neko")
+			)
+
+			end "\*/"
+			endCaptures #(
+				0 #(name "comment.neko")
+			)
+			
+			patterns [
+				; TODO: add actual XML embedding
+				#(
+					match "</?[^^>]+>"
+					name "keyword.other.neko"
+				)
+				#(
+					match "[^^*<]+"
+					name "comment.neko"
+				)
+				#(
+					match "<+"
+					name "comment.neko"
+				)
+				#(
+					match "\*+(?!/)"
+					name "comment.neko"
+				)
+			]
+		)
+
+		block-comment #(
+			begin "/\*"
+			beginCaptures #(
+				0 #(name "comment.neko")
+			)
+			
+			end "\*/"
+			endCaptures #(
+				0 #(name "comment.neko")
+			)
+
+			patterns [
+				#(
+					match "[^^*]+"
+					name "comment.neko"
+				)
+				#(
+					match "\*+(?!/)"
+					name "comment.neko"
+				)
+			]
+		)
+
+		comma #(
+			match ","
+			name "punctuation.separator.comma.neko"
+		)
+
+		semicolon #(
+			match ";"
+			name "punctuation.terminator.neko"
+		)
+
+		invalid #(
+			match "."
+			name "invalid.illegal.neko"
+		)
+
+		illegal #(
+			match "[#?\\~`']"
+			name "invalid.illegal.neko"
+		)
+
+		label #(
+			match "([a-zA-Z_@][\w@]*)(:)"
+			captures #(
+				1 #(name "entity.name.tag.neko")
+				2 #(name "keyword.operator")
+			)
+		)
+
+		goto #(
+			match "(\$goto)\s*(\()\s*([a-zA-Z_@][\w@]*)\s*(\))"
+			captures #(
+				1 #(name "support.function.neko")
+				2 #(name "punctuation.definition.args.begin.neko")
+				3 #(name "entity.name.tag.neko")
+				4 #(name "punctuation.definition.args.end.neko")
+			)
+		)
+
+		builtins #(
+			match "(\$)([a-zA-Z_]\w*)"
+			captures #(
+				1 #(name "support.function.neko")
+				2 #(
+					patterns [
+						#(
+							match {(?x)
+								  t(null|int|float|bool|string|object|array|function|abstract)
+								| array  | a(make|copy|size|sub|blit|concat)
+								| string | s(make|size|copy|sub|[gs]et(?:16|32|[fd])?|blit|find)
+								| new    | obj([gs]et(proto)?|call|fields?|remove)
+								| (?:fast)?hash       | field
+								| nargs  | call       | closure          | apply               | varargs
+								| int|ito[fd]         | float|[fd]toi    | is(nan|infinite|bigendian) | i(add|sub|mult|div)
+								| (get|is)kind
+								| h(key|new|resize|get|mem|remove|set|add|iter|count|size)
+								| print  | (re)?throw
+								| istrue | not        | typeof  | p?compare
+								| (exc|call)stack     | version | setresolver
+								| loader | exports
+							}
+							name "support.function.neko"
+						)
+						#(
+							match "\w+"
+							name "invalid.illegal.neko"
+						)
+					]
+				)
+			)
+		)
+
+		field #(
+			match "[a-zA-Z_@][\w@]*"
+			captures #(
+				0 #(
+					patterns [
+						#(
+							match "__(r?(add|sub|mult|div|mod)|compare|[gs]et|string|(un)?serialize)(?!@)(?=\b)"
+							name "support.function.neko"
+						)
+						#(
+							match "[a-zA-Z_@][\w@]*(?=[ \t]*\()"
+							name "entity.name.function.neko"
+						)
+						#(
+							match "[a-zA-Z_@][\w@]*"
+							name "variable.neko"
+						)
+					]
+				)
+			)
+		)
+
+		pair #(
+			begin "(?<!\.)([a-zA-Z_@][\w@]*)\s*(=>)"
+			beginCaptures #(
+				1 #(name "variable.neko")
+				2 #(name "keyword.operator.neko")
+			)
+
+			end "(?<!\.)(?=[a-zA-Z_@][\w@]*\s*=>)|(?=\})"
+
+			patterns [
+				#(include #empty)
+				#(include #exprs)
+				#(include #comma)
+			]
+		)
+
+		constants #(
+			patterns [
+				#(
+					match "(?:0x\h+|\d+(?:\.\d*)?|\.\d+)(?=\b)"
+					name "constant.numeric.neko"
+				)
+				#(
+					begin {"}
+					beginCaptures #(
+						0 #(name "string.neko")
+					)
+
+					end {"}
+					endCaptures #(
+						0 #(name "string.neko")
+					)
+
+					patterns [
+						#(
+							match {\\(?:["\\nrt]|\d{3})}
+							name "constant.escape.neko"
+						)
+						#(
+							match "\\."
+							name "invalid.illegal.neko"
+						)
+						#(
+							match {[^^"\\]+}
+							name "string.neko"
+						)
+					]
+				)
+				#(
+					match "(?:true|false|null|this)(?!@)(?=\b)"
+					name "constant.language.neko"
+				)
+			]
+		)
+
+		function #(
+			begin "(function)\s*(\()"
+			beginCaptures #(
+				1 #(name "keyword.neko")
+				2 #(name "punctuation.definition.parameters.begin.neko")
+			)
+
+			end "\)"
+			endCaptures #(
+				0 #(name "punctuation.definition.parameters.end.neko")
+			)
+
+			patterns [
+				#(include #empty)
+				#(include #comma)
+				#(
+					match "[a-zA-Z_@][\w@]*"
+					name "variable.parameter.neko"
+				)
+				#(include #invalid)
+			]
+		)
+
+		keywords #(
+			patterns [
+				#(
+					match "(?:var|while|do|if|else|try|return|break|continue)(?!@)(?=\b)"
+					name "keyword.neko"
+				)
+				#(
+					begin "catch(?!@)(?=\b)"
+					beginCaptures #(
+						0 #(name "keyword.neko")
+					)
+
+					end "[a-zA-Z_@][\w@]*"
+					endCaptures #(
+						0 #(name "variable.neko")
+					)
+
+					patterns [
+						#(include #empty)
+					]
+				)
+				#(include #switch)
+			]
+		)
+
+		call #(
+			patterns [
+				#(
+					begin "(?<!\$)(?!(?:break|catch|continue|default|do|else|function|if|return|switch|try|var|while)(?!@)(?=\b))(\.?)([a-zA-Z_@][\w@]*)([ \t]*\()"
+					beginCaptures #(
+						1 #(name "keyword.operator.neko")
+						2 #(
+							patterns [
+								#(
+									match "__(r?(add|sub|mult|div|mod)|compare|[gs]et|string|(un)?serialize)(?!@)"
+									name "support.function.neko"
+								)
+								#(
+									match "[a-zA-Z_@][\w@]*"
+									name "entity.name.function.neko"
+								)
+							]
+						)
+						3 #(name "punctuation.definition.args.begin.neko")
+					)
+
+					end "\)"
+					endCaptures #(
+						0 #(name "punctuation.definition.args.end.neko")
+					)
+
+					patterns [
+						#(include #empty)
+						#(include #comma)
+						#(include #exprs)
+					]
+				)
+				#(
+					begin "(?<=[)\]}]|\$\w+)[ \t]*\("
+					beginCaptures #(
+						0 #(name "punctuation.definition.args.begin.neko")
+					)
+
+					end "\)"
+					endCaptures #(
+						0 #(name "punctuation.definition.args.end.neko")
+					)
+
+					patterns [
+						#(include #empty)
+						#(include #comma)
+						#(include #exprs)
+					]
+				)
+			]
+		)
+		
+		name #(
+			patterns [
+				#(
+					match "([a-zA-Z_@][\w@]*)(?=\s*=\s*(?:\$varargs\s*\(\s*)?function\s*\()"
+					name "entity.name.function.neko"
+				)
+				#(
+					match "[a-zA-Z_@][\w@]*(?!\s*=>)"
+					name "source.neko"
+				)
+			]
+		)
+
+		property #(
+			patterns [
+				#(
+					match "(\.)([a-zA-Z_@][\w@]*)(?=\s*=\s*(?:\$varargs\s*\(\s*)?function\s*\()"
+					captures #(
+						1 #(name "keyword.operator.neko")
+						2 #(
+							patterns [
+								#(
+									match "__(r?(add|sub|mult|div|mod)|compare|[gs]et|string|(un)?serialize)(?!@)"
+									name "support.function.neko"
+								)
+								#(
+									match "[a-zA-Z_@][\w@]*"
+									name "entity.name.function.neko"
+								)
+							]
+						)
+					)
+				)
+				#(
+					match "(\.)([a-zA-Z_@][\w@]*)"
+					captures #(
+						1 #(name "keyword.operator.neko")
+						2 #(
+							patterns [
+								#(include #field)
+							]
+						)
+					)
+				)
+			]
+		)
+
+		paren #(
+			begin "\("
+			beginCaptures #(
+				0 #(name "punctuation.definition.paren.begin.neko")
+			)
+
+			end "\)"
+			endCaptures #(
+				0 #(name "punctuation.definition.paren.end.neko")
+			)
+
+			patterns [
+				#(include #empty)
+				#(include #exprs)
+			]
+		)
+
+		subscript #(
+			begin "\["
+			beginCaptures #(
+				0 #(name "punctuation.definition.subscript.begin.neko")
+			)
+
+			end "\]"
+			endCaptures #(
+				0 #(name "punctuation.definition.subscript.end.neko")
+			)
+
+			patterns [
+				#(include #empty)
+				#(include #exprs)
+			]
+		)
+
+		operators #(
+			match {(?x)
+				  <<?=?
+				| [+\-*/%&|^^]=?
+				| =(?!>)=?
+				| (?<!=)>{1,3}=?
+				| (?:\+\+|--)=
+				| !=
+				| && | \|\|
+			}
+			name "keyword.operator.neko"
+		)
+
+		block-or-object #(
+			begin "\{"
+			beginCaptures #(
+				0 #(name "punctuation.definition.braces.begin.neko")
+			)
+
+			end "(?<=\})"
+
+			patterns [
+				#(include #empty)
+				#(
+					begin "(?=[a-zA-Z_@][\w@]*[ \t]*=>)"
+					
+					end "\}"
+					endCaptures #(
+						0 #(name "punctuation.definition.braces.end.neko")
+					)
+
+					patterns [
+						#(include #empty)
+						#(include #pair)
+						#(include #comma)
+					]
+				)
+				#(
+					begin "(?![a-zA-Z_@][\w@]*[ \t]*=>|\s+|//|/\*|$\n?)"
+
+					end "\}"
+					endCaptures #(
+						0 #(name "punctuation.definition.braces.end.neko")
+					)
+
+					patterns [
+						#(include #empty)
+						#(include #label)
+						#(include #exprs)
+						#(include #semicolon)
+					]
+				)
+			]
+		)
+
+		switch #(
+			begin "switch\b"
+			beginCaptures #(
+				0 #(name "keyword.neko")
+			)
+
+			end "\}"
+			endCaptures #(
+				0 #(name "punctuation.definition.braces.end.neko")
+			)
+
+			patterns [
+				#(include #empty)
+				#(
+					begin "(?<!switch\s*)\{"
+					beginCaptures #(
+						0 #(name "punctuation.definition.braces.begin.neko")
+					)
+
+					end "(?=\})"
+					
+
+					patterns [
+						#(
+							match "(default)\s*(=>)"
+							captures #(
+								1 #(name "keyword.neko")
+								2 #(name "keyword.operator.neko")
+							)
+						)
+						#(
+							match "(?<![+\-*/%&|^^<>=!,.:;(\[{]\s*|^^\s*)=>"
+							name "keyword.operator.neko"
+						)
+						#(include #empty)
+						#(include #exprs)
+						#(include #invalid)
+					]
+				)
+				#(include #exprs)
+				#(include #invalid)
+			]
+		)
+	)
+)

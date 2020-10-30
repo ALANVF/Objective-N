@@ -1,0 +1,42 @@
+{
+	"name": "language-neko",
+	"displayName": "Neko programming language",
+	"description": "Neko programming language support",
+	"version": "0.0.1",
+	"publisher": "theangryepicbanana",
+	"engines": {
+		"vscode": "^1.47.3"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"contributes": {
+		"languages": [
+			{
+				"id": "neko",
+				"aliases": [
+					"neko",
+					"nekovm",
+					"neko vm"
+				],
+				"extensions": [
+					".neko"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "neko",
+				"scopeName": "source.neko",
+				"path": "./syntaxes/neko.json"
+			}
+		]
+	},
+	"dependencies": {
+		"reon-convert": "^0.1.8"
+	},
+	"scripts": {
+		"compile-syntaxes": "reon-convert to-json syntaxes/neko.reon"
+	}
+}
