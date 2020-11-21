@@ -4,7 +4,6 @@ import scala.io.Source
 import java.io._
 import objn.Ast.{Context, Expr, Statement}
 
-// TODO: fix continue in for( ; ; ) loops
 object Main extends App {
 	val ctx = new Context()
 	
