@@ -15,6 +15,20 @@ package object Ast {
 	def array(values: String*) = values.mkString("$array(", ",", ")")
 	def array(values: List[String]) = values.mkString("$array(", ",", ")")
 	
+	def truthy(ctx: Context, expr: Expr): String = {
+		import Checker.{TNull, TInt, TFloat, TString, TBool, TObject, TArray, TFunction, TAbstract, TUnknown}
+		
+		val inferred = Checker.tryGetType(ctx, expr)
+		
+		println(inferred)
+		
+		inferred match {
+			case TBool => expr.toNeko(ctx)
+			case TObject | TUnknown => "@BOOL(" + expr.toNeko(ctx) + ")"
+			case _ => "$istrue(" + expr.toNeko(ctx) + ")"
+		}
+	}
+	
 	class Context {
 		var genSyms = 0
 		var imports = MutableMap[String, String]()
@@ -220,37 +234,55 @@ package object Ast {
 		
 		// Statement expressions:
 		case class If(cond: Expr, thenStmt: Statement) extends Expr {
-			def toNeko(ctx: Context) = s"if @BOOL(${cond.toNeko(ctx)}) ${thenStmt.toNeko(ctx)}"
+			def toNeko(ctx: Context) = s"if ${truthy(ctx, cond)} ${thenStmt.toNeko(ctx)}"
 		}
 		case class IfElse(cond: Expr, thenStmt: Statement, elseStmt: Statement) extends Expr {
-			def toNeko(ctx: Context) = s"if @BOOL(${cond.toNeko(ctx)}) ${thenStmt.toNeko(ctx)} else ${elseStmt.toNeko(ctx)}"
+			def toNeko(ctx: Context) = s"if ${truthy(ctx, cond)} ${thenStmt.toNeko(ctx)} else ${elseStmt.toNeko(ctx)}"
 		}
 		
 		case class While(cond: Expr, stmt: Statement) extends Expr {
-			def toNeko(ctx: Context) = s"while @BOOL(${cond.toNeko(ctx)}) ${stmt.toNeko(ctx)}"
+			def toNeko(ctx: Context) = s"while ${truthy(ctx, cond)} ${stmt.toNeko(ctx)}"
 		}
 		
 		case class DoWhile(stmt: Statement, cond: Expr) extends Expr {
-			def toNeko(ctx: Context) = s"do ${stmt.toNeko(ctx)} while @BOOL(${cond.toNeko(ctx)})"
+			def toNeko(ctx: Context) = s"do ${stmt.toNeko(ctx)} while ${truthy(ctx, cond)}"
 		}
 		
 		case class For(decl: Option[Statement], cond: Option[Expr], update: Option[Expr], stmt: Statement) extends Expr {
 			def toNeko(ctx: Context): String = {
-				val b = stmt.toNeko(ctx)
-				val d = decl.map(_.toNeko(ctx))
-				val c = cond.map(_.toNeko(ctx))
-				val u = update.map(_.toNeko(ctx))
-				
-				(d, c, u) match { // TODO: fix
-					case (Some(e1), Some(e2), Some(e3)) => s"{$e1;while @BOOL($e2) {$b;$e3}}"
-					case (None,     Some(e2), Some(e3)) => s"while @BOOL($e2) {$b;$e3}"
-					case (Some(e1), None,     Some(e3)) => s"{$e1;while true {$b;$e3}}"
-					case (Some(e1), Some(e2), None)     => s"{$e1;while @BOOL($e2) $b}"
-					case (None,     None,     Some(e3)) => s"while true {$b;$e3}"
-					case (None,     Some(e2), None)     => s"while @BOOL($e2) $b"
-					case (Some(e1), None,     None)     => s"{$e1;while true $b}"
-					case (None,     None,     None)     => s"while true $b"
+				val loop = update match {
+					case Some(u) => DoWhile(
+						cond match {
+							case Some(c) => Block({
+								val check = If(
+									Call(Builtin("$not"), List(Truthy(c))),
+									Statement.Break(None)
+								)
+								
+								stmt match {
+									case Block(stmts) => check :: stmts
+									case _ => List(check, stmt)
+								}
+							})
+							case None => stmt
+						},
+						Op.Infix(Paren(u), "||", NekoValue.Bool(true))
+					)
+					case None => While(
+						cond match {
+							case Some(c) => Truthy(c)
+							case None => NekoValue.Bool(true)
+						},
+						stmt
+					)
 				}
+				
+				val res = decl match {
+					case Some(d) => Block(List(d, loop))
+					case None => loop
+				}
+				
+				res.toNeko(ctx)
 			}
 		}
 		
@@ -303,6 +335,7 @@ package object Ast {
 		
 		
 		// Misc:
+		case class Truthy(expr: Expr) extends Expr { def toNeko(ctx: Context) = truthy(ctx, expr) }
 		case class Raw(code: String) extends Expr { def toNeko(ctx: Context) = this.code }
 	}
 	

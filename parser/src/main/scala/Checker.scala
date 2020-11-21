@@ -250,6 +250,8 @@ object Checker {
 			case Expr.SwitchCase.Default(stmt) => tryGetStmtType(ctx, stmt)
 		} reduceLeft {_ | _}
 		
+		case Expr.Truthy(_) => TBool
+			
 		case _ => TUnknown
 	})
 	
