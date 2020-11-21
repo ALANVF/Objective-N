@@ -18,11 +18,7 @@ package object Ast {
 	def truthy(ctx: Context, expr: Expr): String = {
 		import Checker.{TNull, TInt, TFloat, TString, TBool, TObject, TArray, TFunction, TAbstract, TUnknown}
 		
-		val inferred = Checker.tryGetType(ctx, expr)
-		
-		println(inferred)
-		
-		inferred match {
+		Checker.tryGetType(ctx, expr) match {
 			case TBool => expr.toNeko(ctx)
 			case TObject | TUnknown => "@BOOL(" + expr.toNeko(ctx) + ")"
 			case _ => "$istrue(" + expr.toNeko(ctx) + ")"
