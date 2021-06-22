@@ -3,6 +3,7 @@ import sys.process._
 import scala.io.Source
 import java.io._
 import objn.Ast.{Context, Expr, Statement}
+import objn.Checker
 
 object Main extends App {
 	val ctx = new Context()
@@ -335,6 +336,24 @@ object Main extends App {
 					Statement.ImportFile(filePath, true)
 				} else {
 					ctx.imports(filePath) = if(filePath endsWith ".neko") {
+						import objn.Checker._
+						if(filePath endsWith "/objn/object.neko") {
+							ctx.add("ON_Object", TObject)
+							ctx.add("id", TObject)
+							ctx.add(
+								"objn_Typecheck",
+								TFunction(
+									Some(List(
+										TInt | TObject | TArray(TInt | TObject),
+										TUnknown,
+										TBool
+									)),
+									TBool | TNull
+								)
+							)
+							//ctx.add("objn_Copy", $tfunction@<T>(T): T)
+						}
+						
 						Source.fromFile(filePath).mkString
 					} else if((filePath endsWith ".mn") || (filePath endsWith ".hn")) {
 						ctx.imports(filePath) = "" // To prevent circular imports
@@ -377,7 +396,39 @@ object Main extends App {
 		// parse thing
 		def apply(input: String): String = {
 			parseAll(program, input) match {
-				case Success(result, _) => result.map(_.toNeko(ctx)).mkString(";\n")
+				case Success(result, _) =>
+					Checker.quiet = true
+					
+					val funcDecls = result.collect {
+						case Statement.FuncDecl(name, params, body) =>
+							val (newCtx, paramTypes) = Checker.typeFuncParams(ctx, params)
+							(name, params, body, newCtx, paramTypes)
+					}
+					
+					for((name, params, body, newCtx, paramTypes) <- funcDecls) {
+						ctx.add(name, Checker.TFunction(paramTypes, Checker.TUnknown))
+					}
+					
+					for((name, params, body, newCtx, paramTypes) <- funcDecls) {
+						ctx.set(name, Checker.TFunction(paramTypes, Checker.funcRetType(newCtx.inner(), body)))
+					}
+					
+					/*for((name, params, body, newCtx, paramTypes) <- funcDecls.reverse) {
+						ctx.set(name, Checker.TFunction(paramTypes, Checker.tryGetType(newCtx.inner(), body)))
+					}
+					
+					for((name, params, body, newCtx, paramTypes) <- funcDecls) {
+						ctx.set(name, Checker.TFunction(paramTypes, Checker.tryGetType(newCtx.inner(), body)))
+					}*/
+					
+					Checker.quiet = false
+					
+					for(stmt <- result) {
+						if(Checker.tryGetStmtType(ctx, stmt) == Checker.TInvalid) {
+							scala.sys.error("Invalid type for statement `"+stmt.toNeko(ctx)+"`")
+						}
+					}
+					result.map(_.toNeko(ctx)).mkString(";\n")
 				case failure: NoSuccess => scala.sys.error(failure.toString)
 			}
 		}
