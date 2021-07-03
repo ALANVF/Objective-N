@@ -38,7 +38,7 @@
 		]
 	},
 	"dependencies": {
-		"reon-convert": "^0.1.8"
+		"reon-convert": "^0.1.13"
 	},
 	"scripts": {
 		"compile-syntaxes": "reon-convert to-json syntaxes/objn.reon"

@@ -125,7 +125,7 @@
 
 // regex
 @interface NL_regexp : ON_Object
-	@property rx (read, write)
+	@property (read, write) rx: $tabstract(regexp)
 	
 	+ new:rx
 	+ new:rx options:options

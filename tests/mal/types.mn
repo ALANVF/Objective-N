@@ -47,7 +47,7 @@
 		return val
 	}
 	
-	- find:(MalSymbol)key {
+	- (Env | ON_Nil) find:(MalSymbol)key {
 		return if [this->data hasKey:key]
 			this
 		else if this->outer
@@ -75,7 +75,7 @@
 	+ new:str {[this stringWithString:str]}
 @end
 
-function string_Q(ON_Object obj) {
+function string_Q(ON_Object obj): $tbool {
 	if [obj isKindOfClass:ON_String] {
 		var s = [obj ON_String]
 		if [s isKindOfClass:MalSymbol] {
@@ -87,11 +87,11 @@ function string_Q(ON_Object obj) {
 
 // lists
 
-function list_Q(obj) {
+function list_Q(obj): $tbool {
 	return [obj isKindOfClass:ON_Array] && ![obj isKindOfClass:MalVector]
 }
 
-function _rest(ON_Array obj) {
+function _rest(ON_Array obj): ON_Array {
 	return [obj subarrayWithRange:ON_MakeRange(1, [obj count]-1)]
 }
 
@@ -103,19 +103,19 @@ function _rest(ON_Array obj) {
 	}
 @end
 
-function assoc_BANG(ON_MutableDictionary d, ON_Array kvs) {
+function assoc_BANG(ON_MutableDictionary d, ON_Array kvs): ON_MutableDictionary {
 	for(var i = 0; i < [kvs count]; i += 2)
 		d[kvs[i]] = kvs[i+1]
 	return d
 }
 
-function hash_map(ON_Array kvs) {
+function hash_map(ON_Array kvs): ON_MutableDictionary {
 	return assoc_BANG([ON_MutableDictionary dictionary], kvs)
 }
 
 // mal functions
 
-function block_Q(obj) {
+function block_Q(obj): $tbool {
 	return $typeof(obj) == $tfunction
 }
 
@@ -130,22 +130,22 @@ function block_Q(obj) {
 	}
 @end
 
-function atom_Q(obj) {
+function atom_Q(obj): $tbool {
 	return objn_Typecheck(MalAtom, obj, true)
 }
 
 // general functions
 
-function sequential_Q(ON_Object obj) {
+function sequential_Q(ON_Object obj): $tbool {
 	return objn_Typecheck(ON_Array, obj, true)
 }
 
-function equal_Q(ON_Object a, ON_Object b) {
+function equal_Q(ON_Object a, ON_Object b): $tbool {
 	if !([a class] == [b class]
 			||
 		([a isKindOfClass:ON_Array] && [a isKindOfClass:ON_Array])
 			||
-		(objn_Typecheck($array(ON_Integer,ON_Float), a, true) && objn_Typecheck($array(ON_Integer,ON_Float), b, true))
+		([a isKindOfClass:ON_Number] && [b isKindOfClass:ON_Number])
 			||
 		(string_Q(a) && string_Q(b))
 	) {
@@ -156,7 +156,7 @@ function equal_Q(ON_Object a, ON_Object b) {
 		return true
 	else if [a isKindOfClass:MalFalse]
 		return true
-	else if [a isKindOfClass:ON_Integer] || [a isKindOfClass:ON_Float]
+	else if [a isKindOfClass:ON_Number]
 		return [a raw] == [b raw]
 	else
 		return a == b

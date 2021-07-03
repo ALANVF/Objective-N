@@ -39,7 +39,7 @@
 @end
 
 @interface ON_Integer : ON_Number
-	@property raw (read) = 0;
+	@property (read) raw = 0;
 	
 	+ integerWithNekoInteger:int
 	
@@ -57,7 +57,7 @@
 @end
 
 @interface ON_Float : ON_Number
-	@property raw (read) = 0.0;
+	@property (read) raw = 0.0;
 	
 	+ floatWithNekoFloat:float
 	
@@ -75,7 +75,7 @@
 @end
 
 @interface ON_String : ON_Object
-	@property raw (read) = "";
+	@property (read) raw = "";
 	
 	+ string
 	+ stringWithLength:length
@@ -200,8 +200,8 @@
 @end
 
 @interface ON_Array : ON_Object
-	@property raw (read) = $array();
-	@property count (read) = 0;
+	@property (read) raw = $array();
+	@property (read) count = 0;
 	
 	+ array
 	+ arrayWithValue:value
@@ -290,7 +290,7 @@
 
 @interface ON_Dictionary : ON_Object
 	@property raw = $new(null);
-	@property count (read) = 0;
+	@property (read) count = 0;
 	
 	+ dictionary
 	+ dictionaryWithDictionary:dict
@@ -381,8 +381,8 @@
 @end
 
 @interface ON_Range : ON_Object
-	@property position (read) = 0;
-	@property length (read) = 0;
+	@property (read) position = 0;
+	@property (read) length = 0;
 	
 	- initAtPosition:pos withLength:len
 	
@@ -403,21 +403,21 @@
 @end
 
 @interface ON_Enumerator : ON_Object
-	@property allValues (read)
+	@property (read) allValues
 	
 	- initWithValues:array
 	
 	- nextValue
 @end
 
-@interface ON_ProcessInfo : ON_Object
-	- arguments
-	- argumentsForLoader:loader
+//@interface ON_ProcessInfo : ON_Object
+//	- arguments
+//	- argumentsForLoader:loader
 	//- environment
 	//- hostName
-	- operatingSystem
-	- operatingSystemName
-	- processIdentifier
+//	- operatingSystem
+//	- operatingSystemName
+//	- processIdentifier
 	//- processName
 	//- setProcessName
-@end
+//@end

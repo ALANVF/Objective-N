@@ -2,7 +2,7 @@
 #import "../objn/object.neko"
 
 @interface Basic : ON_Object
-	@property a (read, write)
+	@property (read, write) a
 	
 	- init
 @end

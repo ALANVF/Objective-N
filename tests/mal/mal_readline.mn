@@ -1,7 +1,7 @@
 // not doing this for a while lol
 
 //change later
-function _readline($tstring prompt) {
+function _readline($tstring prompt): $tstring {
 	$print(prompt)
 	
 //	var str = "", c = 0

@@ -18,14 +18,14 @@ package object Ast {
 	def truthy(ctx: Context, expr: Expr): String = {
 		import Checker.{TNull, TInt, TFloat, TString, TBool, TObject, TArray, TFunction, TAbstract, TUnknown}
 		
-		Checker.tryGetType(ctx, expr) match {
+		Checker.exprTyper.typeExprWith(ctx, expr) match {
 			case TBool => expr.toNeko(ctx)
 			//case TObject | TUnknown => "@BOOL(" + expr.toNeko(ctx) + ")"
 			case _ => "$istrue(" + expr.toNeko(ctx) + ")"
 		}
 	}
 	
-	class Context(outer: Option[Context]) {
+	class Context(val outer: Option[Context]) {
 		import Checker.{Type}
 		
 		var genSyms: Int = outer.map(_.genSyms).getOrElse(0)
@@ -57,7 +57,7 @@ package object Ast {
 			case None => locals(name) = t // Global variable
 		}
 		
-		def contains(name: String): Boolean = locals.contains(name) || outer.forall(_ contains name)
+		def contains(name: String): Boolean = locals.contains(name) || outer.exists(_ contains name)
 		
 		def inner() = new Context(this)
 		def inner[T](blk: (Context) => T) = blk(new Context(this))
@@ -92,14 +92,19 @@ package object Ast {
 				for((k, v) <- pairs) buf.append('\n' + tabs2 + k.toObjn(tabs2) + ": " + v.toObjn(tabs2))
 				buf.append('\n' + tabs + '}').toString()
 			
-			case Func(params, body) =>
-				(params match {
+			case Func(params, ret, body) =>
+				val params2 = params match {
 					case FuncArgs.Args(Nil) => "^" 
 					case FuncArgs.Args(params2) => params2.map {
 						case (None, name) => name
 						case (Some(t), name) => t.toObjn + ' ' + name
-					}.mkString("^(", ", ", ") ")
-					case FuncArgs.Varargs(name) => s"^($name...) "
+					}.mkString("^(", ", ", ")")
+					case FuncArgs.Varargs(name) => s"^($name...)"
+				}
+				
+				params2 + (ret match {
+					case Some(r) => ": " + r.toObjn + ' '
+					case None => if(params2.last == ')') " " else ""
 				}) + body.toObjn(tabs)
 			
 			case Selector.Single(name) => s"@selector($name)"
@@ -190,15 +195,29 @@ package object Ast {
 		sealed trait Type {
 			def toNeko: String
 			def toObjn: String = this match {
+				case Type.Dynamic => "_"
 				case Type.Builtin(name) => name
 				case Type.Compound(path) => path.mkString(".")
+				case Type.Paren(t) => '(' + t.toObjn + ')'
 				case Type.Union(types) => types.map(_.toObjn).mkString(" | ")
+				case Type.Array(t) => '[' + t.toObjn + ']'
+				case Type.Func(None, ret) => "^(...): " + ret.toObjn
+				case Type.Func(Some(params), ret) => params.map(_.toObjn).mkString("^(", ", ", "): ") + ret.toObjn
+				case Type.Abstract(name) => "$tabstract("+name+')'
 			}
 		}
 		object Type {
+			case object Dynamic                     extends Type { def toNeko = "" }
 			case class Builtin(name: String)        extends Type { def toNeko = name }
 			case class Compound(path: List[String]) extends Type { def toNeko = path.mkString(".") }
+			case class Paren(t: Type)               extends Type { def toNeko = t.toNeko }
 			case class Union(types: List[Type])     extends Type { def toNeko = types.map(_.toNeko).mkString("$array(", ",", ")") }
+			case class Array(t: Type)               extends Type { def toNeko = "$tarray" }
+			case class Func(params: Option[List[Type]], ret: Type) extends Type {
+				// TODO: add thing to check function arity
+				def toNeko = "$tfunction"
+			}
+			case class Abstract(name: String)       extends Type { def toNeko = "$tabstract" }
 		}
 		
 		sealed trait NekoValue extends Expr
@@ -254,18 +273,23 @@ package object Ast {
 			case class Varargs(name: String)                    extends FuncArgs
 		}
 		
-		case class Func(args: FuncArgs, body: Block) extends Expr {
+		case class Func(args: FuncArgs, ret: Option[Type], body: Block) extends Expr {
 			def toNeko(ctx: Context): String =
 				this.args match {
 					case FuncArgs.Args(List()) => s"(function()${this.body.toNeko(ctx)})"
-					case FuncArgs.Args(args) if args.forall(_._1.isEmpty) => s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(ctx)})"
+					case FuncArgs.Args(args) if args.forall(_._1.isEmpty) =>
+						val newCtx = ctx.inner(args.map(_._2 -> Checker.TUnknown) : _*)
+						s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(newCtx)})"
 					case FuncArgs.Args(args) => {
 						val checks = args.flatMap {
+							case (Some(Expr.Type.Dynamic), _) => None
 							case (Some(t), name) => Some(s"objn_Typecheck(${t.toNeko},$name,false);")
 							case _ => None
 						}.mkString
 						
-						return s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(ctx, checks)})"
+						val (newCtx, _) = Checker.typeFuncParams(ctx, this.args)
+						
+						return s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(newCtx, checks)})"
 					}
 					case FuncArgs.Varargs(arg) => s"$$varargs(function($arg)${this.body.toNeko(ctx)})"
 				}
@@ -330,7 +354,7 @@ package object Ast {
 							"=" | "+=" | "-="  | "++=" | "--=" | "*=" | "/=" | "%=" | "&&=" | "||=" => left.toNeko(ctx) + symbol + right.toNeko(ctx)
 						case "**" => s"@POW(${left.toNeko(ctx)},${right.toNeko(ctx)})"
 						case "<<" | ">>" | "&" | "|" | "^" | "<<=" | ">>=" | "&=" | "|=" | "^="
-							if Checker.tryGetType(ctx, left) == TInt && Checker.tryGetType(ctx, right) == TInt =>
+							if Checker.exprTyper.typeExprWith(ctx, left) == TInt && Checker.exprTyper.typeExprWith(ctx, right) == TInt =>
 								left.toNeko(ctx) + symbol + right.toNeko(ctx)
 						case "<<" => s"@SHL(${left.toNeko(ctx)},${right.toNeko(ctx)})"
 						case ">>" => s"@SHR(${left.toNeko(ctx)},${right.toNeko(ctx)})"
@@ -352,17 +376,17 @@ package object Ast {
 				def toNeko(ctx: Context) = {
 					import Checker.{TNull, TInt, TFloat, TString, TBool, TObject, TArray, TFunction, TAbstract, TUnknown, TInvalid, TUnion}
 					symbol match {
-						case "!" => Checker.tryGetType(ctx, right) match {
+						case "!" => Checker.exprTyper.typeExprWith(ctx, right) match {
 							case TObject | TUnknown => s"@NOT(${right.toNeko(ctx)})"
 							case _ => s"$$not(${right.toNeko(ctx)})"
 						}
-						case "+" => Checker.tryGetType(ctx, right) match {
+						case "+" => Checker.exprTyper.typeExprWith(ctx, right) match {
 							case TNull | TString | TBool | TObject | TArray(_)
 								| TFunction(_, _) | TAbstract(_) | TUnknown | TUnion(_) => s"@POS(${right.toNeko(ctx)})"
 							case TInt | TFloat => right.toNeko(ctx)
 							case TInvalid => scala.sys.error("Invalid type!")
 						}
-						case "-" => Checker.tryGetType(ctx, right) match {
+						case "-" => Checker.exprTyper.typeExprWith(ctx, right) match {
 							case TNull | TString | TBool | TObject | TArray(_)
 								| TFunction(_, _) | TAbstract(_) | TUnknown | TUnion(_) => s"@NEG(${right.toNeko(ctx)})"
 							case TInt | TFloat => "-"+right.toNeko(ctx)
@@ -456,12 +480,23 @@ package object Ast {
 		
 		case class ForXInY(xIsNew: Boolean, x: String, y: Expr, stmt: Statement) extends Expr {
 			def toNeko(ctx: Context) = ctx.genSym {e =>
+				val newCtx = ctx.inner()
+				val yType = Checker.exprTyper.typeExprWith(newCtx, y)
+				val xType = Checker.elementType(yType)
+				
+				if(xIsNew) {
+					newCtx.add(x, xType)
+				} else {
+					if(!(newCtx contains x) && !ctx.outer.isEmpty) Checker.warn(s"warning: variable `$x` not found")
+					newCtx.set(x, xType)
+				}
+				
 				String.join("",
 					"{var ",
 					(if(xIsNew) s"$x," else ""),
 					s"$e=ON_MakeEnumerator(${y.toNeko(ctx)});\n",
 					s"while ($x=${Message.send(e, "nextValue")})!=${Message.send("ON_Nil", "make")} ",
-					stmt.toNeko(ctx),
+					stmt.toNeko(newCtx),
 					"}"
 				)
 			}
@@ -469,12 +504,27 @@ package object Ast {
 		
 		case class ForXYInZ(xyAreNew: Boolean, x: String, y: String, z: Expr, stmt: Statement) extends Expr {
 			def toNeko(ctx: Context) = ctx.genSym {e =>
+				val newCtx = ctx.inner()
+				val zType = Checker.exprTyper.typeExprWith(newCtx, z)
+				val xType = Checker.indexType(zType)
+				val yType = Checker.elementType(zType)
+				
+				if(xyAreNew) {
+					newCtx.add(x, xType)
+					newCtx.add(y, yType)
+				} else {
+					if(!(newCtx contains x) && !ctx.outer.isEmpty) Checker.warn(s"warning: variable `$x` not found")
+					if(!(newCtx contains y) && !ctx.outer.isEmpty) Checker.warn(s"warning: variable `$y` not found")
+					newCtx.set(x, xType)
+					newCtx.set(y, yType)
+				}
+				
 				String.join("",
 					"{var ",
 					(if(xyAreNew) s"$x,$y," else ""),
 					s"$e=ON_MakeEnumerator2(${z.toNeko(ctx)});\n",
 					s"while {$y=${Message.send(e+"[1]", "nextValue")};$x=${Message.send(e+"[0]", "nextValue")}}!=${Message.send("ON_Nil", "make")} ",
-					stmt.toNeko(ctx),
+					stmt.toNeko(newCtx),
 					"}"
 				)
 			}
@@ -497,7 +547,39 @@ package object Ast {
 			def toNeko(ctx: Context) = String.join("",
 				"switch ",
 				target.toNeko(ctx),
-				cases.map(_.toNeko(ctx)).mkString("{", "\n", "}")
+				target match {
+					case Call(Builtin("$typeof"), List(Variable(varName))) => {
+						import Checker._
+						
+						val varType = ctx.find(varName).get
+						val varTypes = MutableMap.from(varType match {
+							case t if t == TUnknown => Map(
+								"$tnull" -> TNull,
+								"$tint" -> TInt,
+								"$tfloat" -> TFloat,
+								"$tbool" -> TBool,
+								"$tstring" -> TString,
+								"$tarray" -> TArray(),
+								"$tobject" -> TObject,
+								"$tfunction" -> TFunction(),
+								"$tabstract" -> TAbstract(None)
+							)
+							case TUnion(ts) => ts.groupMapReduce(t => t.name)(t => t)(_ | _)
+							case TInvalid => Map[String, Checker.Type]()
+							case _ => Map(varType.name -> varType)
+						})
+						
+						cases.map {
+							case c @ Expr.SwitchCase.Case(Expr.Builtin(builtin), stmt) =>
+								val t = varTypes.remove(builtin).getOrElse(TInvalid)
+								val newCtx = ctx.inner(varName -> t)
+								c.toNeko(newCtx)
+							case c => c.toNeko(ctx.inner(varName -> TUnion(varTypes.values.toSet)))
+						}.mkString("{", "\n", "}")
+					}
+					
+					case _ => cases.map(_.toNeko(ctx)).mkString("{", "\n", "}")
+				}
 			)
 		}
 		
@@ -513,50 +595,63 @@ package object Ast {
 		def toNeko(ctx: Context): String
 		def toObjn(tabs: String = ""): String = this match {
 			case VarDecl(decls) =>
-				decls match {
-					case List((name, value)) => ' ' + name + value.map(v => " = " + v.toObjn(tabs)).getOrElse("")
+				"var" + (decls match {
+					case List((name, ty, value)) => ' ' + name + ty.map(": " + _.toObjn).getOrElse("") + value.map(v => " = " + v.toObjn(tabs)).getOrElse("")
 					case _ =>
 						val tabs2 = tabs + TAB
 						decls.map {
-							case (name, None) => '\n' + tabs2 + name
-							case (name, Some(value)) => '\n' + tabs2 + name + " = " + value.toObjn(tabs2)
-						}.mkString("var", ",", "")
-				}
+							case (name, ty, None) => '\n' + tabs2 + name + ty.map(": " + _.toObjn).getOrElse("")
+							case (name, ty, Some(value)) => '\n' + tabs2 + name + ty.map(": " + _.toObjn).getOrElse("") + " = " + value.toObjn(tabs2)
+						}.mkString(",")
+				})
 			
 			case _ => scala.sys.error("idk")
 		}
 	}
 	object Statement {
-		case class VarDecl(decls: List[(String, Option[Expr])]) extends Statement {
+		case class VarDecl(decls: List[(String, Option[Expr.Type], Option[Expr])]) extends Statement {
 			def toNeko(ctx: Context) =
 				"var " + decls.map {
-					case (name, Some(value)) => {
-						ctx.add(name, Checker.tryGetType(ctx, value))
+					case (name, ty, Some(value)) => {
+						// TODO: actually check against expr type
+						ctx.add(name, ty match {
+							case Some(t) => Checker.Type.fromExprType(t)
+							case None => Checker.exprTyper.typeExprWith(ctx, value)
+						})
 						s"$name=${value.toNeko(ctx)}"
 					}
-					case (name, None) => {
-						ctx.add(name, Checker.TNull)
+					case (name, ty, None) => {
+						ctx.add(name, ty.map(Checker.Type.fromExprType).getOrElse(Checker.TNull))
 						name
 					}
 				}.mkString(",\n\t")
 		}
 		
-		// FIX
-		case class FuncDecl(name: String, args: Expr.FuncArgs, body: Expr.Block) extends Statement {
-			def toNeko(ctx: Context) =
+		// TODO:
+		// - disable runtime checks when possible
+		// - maybe add generics
+		case class FuncDecl(name: String, args: Expr.FuncArgs, ret: Option[Expr.Type], body: Expr.Block) extends Statement {
+			def toNeko(ctx: Context) = {
 				s"$name=" + (this.args match {
-					case Expr.FuncArgs.Args(List()) => s"(function()${this.body.toNeko(ctx)})"
-					case Expr.FuncArgs.Args(args) if args.forall(_._1.isEmpty) => s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(ctx)})"
+					case Expr.FuncArgs.Args(List()) => s"(function()${this.body.toNeko(ctx.inner())})"
+					case Expr.FuncArgs.Args(args) if args.forall(_._1.isEmpty) => {
+						val newCtx = ctx.inner(args.map(_._2 -> Checker.TUnknown) : _*)
+						s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(newCtx)})"
+					}
 					case Expr.FuncArgs.Args(args) => {
 						val checks = args.flatMap {
+							case (Some(Expr.Type.Dynamic), _) => None
 							case (Some(t), name) => Some(s"objn_Typecheck(${t.toNeko},$name,false);")
 							case _ => None
 						}.mkString
 						
-						s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(ctx, checks)})"
+						val (newCtx, _) = Checker.typeFuncParams(ctx, this.args)
+						
+						s"(function(${args.map(_._2).mkString(",")})${this.body.toNeko(newCtx, checks)})"
 					}
-					case Expr.FuncArgs.Varargs(arg) => s"$$varargs(function($arg)${this.body.toNeko(ctx)})"
+					case Expr.FuncArgs.Varargs(arg) => s"$$varargs(function($arg)${this.body.toNeko(ctx.inner(arg -> Checker.TArray()))})"
 				})
+			}
 		}
 		
 		sealed trait MethodKind { def toNeko: String }
@@ -567,7 +662,7 @@ package object Ast {
 		
 		sealed trait InterfaceBody { def toNeko(ctx: Context, klass: String): String }
 		object InterfaceBody {
-			case class Property(name: String, attrs: List[String], value: Option[Expr]) extends InterfaceBody {
+			case class Property(attrs: List[String], name: String, t: Option[Expr.Type], value: Option[Expr]) extends InterfaceBody {
 				def toNeko(ctx: Context, klass: String): String = {
 					val n = '"' + name + '"'
 					val a = if(attrs.isEmpty) "null" else attrs.map(_ + "=>true").mkString("{", ",", "}")
@@ -603,20 +698,26 @@ package object Ast {
 		
 		sealed trait ImplementationBody { def toNeko(ctx: Context, klass: String): String }
 		object ImplementationBody {
-			case class SingleMethod(kind: MethodKind, name: String, body: Expr.Block) extends ImplementationBody {
+			case class SingleMethod(kind: MethodKind, ret: Option[Expr.Type], name: String, body: Expr.Block) extends ImplementationBody {
 				def toNeko(ctx: Context, klass: String) =
-					s"$klass.@@${kind.toNeko}_method(${singleSel(name)},function()" + body.toNeko(ctx) + ");"
+					s"$klass.@@${kind.toNeko}_method(${singleSel(name)},function()" + body.toNeko(ctx.inner()) + ");"
 			}
-			case class MultiMethod(kind: MethodKind, args: List[(String, Option[Expr.Type], String)], body: Expr.Block) extends ImplementationBody {
+			case class MultiMethod(kind: MethodKind, ret: Option[Expr.Type], args: List[(String, Option[Expr.Type], String)], body: Expr.Block) extends ImplementationBody {
 				def toNeko(ctx: Context, klass: String) = {
 					val (labels, _, names) = args.unzip3
+					val newCtx = ctx.inner()
+					val checks = args.flatMap {
+						case (_, None, n) =>
+							newCtx.add(n, Checker.TUnknown)
+							None
+						case (_, Some(t), n) =>
+							newCtx.add(n, Checker.Type.fromExprType(t))
+							Some(s"objn_Typecheck(${t.toNeko},$n,false);")
+					}
 					
 					String.join("",
 						s"$klass.@@${kind.toNeko}_method(${multiSel(labels)},function(${names.mkString(",")})",
-						body.toNeko(ctx, args.flatMap {
-							case (_, None, n) => None
-							case (_, Some(t), n) => Some(s"objn_Typecheck(${t.toNeko},$n,false);")
-						}.mkString),
+						body.toNeko(newCtx, checks.mkString),
 						");"
 					)
 				}

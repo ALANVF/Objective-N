@@ -7,20 +7,21 @@ The other 5% of Objective-N that is *not* compatable with Neko includes these th
 - The `@` character is not allowed in identifiers.
 - Curly braces are mandatory for anonymous function bodies.
 - Multiline comments are not yet supported.
-- Short-circuting expressions (using `&&` or `||`) only return boolean values for now.
+- Some statements like `return` can't be used with `&&` or `||`.
 
 
 # Objective-N features
 
 ### Shorthand functions
-Similarly to Objective-C, you may use `^` for anonymous functions rather than the `function` keyword. You may also omit the `(...)` if it doesn't take any arguments.
+Similarly to Objective-C, you may use `^` for anonymous functions rather than the `function` keyword. You may also omit the `(...)` if it doesn't take any arguments. They can also have parameter and return type annotations.
 
 Here are some examples:
 ```js
 function(a, b) {return a + b}
 function {1 + 2}
-^($tint a) {a ** 2}
+^($tint a): $tint {a ** 2}
 ^{thing()}
+^: $tstring {"hello"}
 ```
 
 ### Function declarations
@@ -31,9 +32,16 @@ function add(a, b) {
 }
 ```
 
+They can also have parameter and return type annotations
+```js
+function add($tint a, $tint b): $tint {
+	return a + b
+}
+```
+
 ### Varargs syntax
 For all kinds for regular functions, you may use `...` on the parameter of a function to indicate that it is variadic.
-```
+```js
 function thing(values...) {...}
 var thing = ^(things...) {...}
 ```
@@ -56,8 +64,6 @@ Self-explanatory I think.
 ```js
 for(var i = 0; i < 5; i++) {...}
 ```
-
-Using `continue` in a for loop is kinda broken so try not to do that yet pls (also applies to for-in loops).
 
 ### For-In loops
 Basically iterates through a list of values. Works with Neko arrays, Neko objects (as far as I know), and any Objective-N type with an `ON_Enumerator` or `ON_Enumerator2` method.
@@ -87,6 +93,8 @@ switch 2 {
 	default: ...
 }
 ```
+
+Neko-style switches are still available.
 
 ### Directives
 TODO.
@@ -122,11 +130,12 @@ They work similarly to how they work in Objective-C, however there are some diff
 - `this` is used rather than `self` (might change eventually).
 - Class members inside the class may only be accessed through `this->member` (for now).
 - Class members outside the class may only be accessed through messages (for now).
-- Protocols are not yet supported.
-- Categories are not yet supported.
-- Extensions are not yet supported.
+- Protocols are not supported yet.
+- Categories are not supported yet.
+- Extensions are not supported yet.
 - `make` is used rather than `alloc`.
 - Messages sent to `nil` will fail.
+- `instancetype` is not supported yet.
 
 Here's a basic example of a class:
 ```objective-c
@@ -163,4 +172,6 @@ TODO: add more info here.
 - method1:value                     // can be any type
 - method2:($tint)value              // can only be a Neko integer
 - method3:($tint | ON_Integer)value // can either be a Neko integer or an instance of ON_Integer
+- ($tint) method4                   // returns a Neko integer
+var ints: $array($tint) = $amake(5) // ints is an empty array of 5 Neko integers
 ```

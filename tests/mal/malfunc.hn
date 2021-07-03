@@ -1,11 +1,11 @@
 function EVAL(ast, env) {}
 
 @interface MalFunc : ON_Object
-	@property ast (read) //(copy) ON_Array
-	@property env (read) //(copy) Env
-	@property params (read) //(copy) ON_Array
-	@property isMacro (read, write) //$tbool
-	@property meta //(copy) ON_Object
+	@property (read) ast: ON_Array //(copy)
+	@property (read) env: Env //(copy)
+	@property (read) params: ON_Array //(copy)
+	@property (read, write) isMacro: $tbool
+	@property (read) meta: ON_Object //(copy)
 	
 	- init:ast env:env params:params
 	- apply:args

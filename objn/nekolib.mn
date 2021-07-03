@@ -14,37 +14,37 @@ var utf8_buf_alloc = $loader.loadprim("std@utf8_buf_alloc", 1),
 	utf8_compare = $loader.loadprim("std@utf8_compare", 2)
 
 @implementation NL_UTF8
-	+ buf_alloc:($tint)size {
+	+ ($tabstract(ubuf)) buf_alloc:($tint)size {
 		return utf8_buf_alloc(size)
 	}
-	+ buf_add:buf char:($tint)char {
+	+ buf_add:($tabstract(ubuf))buf char:($tint)char {
 		utf8_buf_add(buf, char)
 	}
-	+ buf_content:buf {
+	+ ($tstring) buf_content:($tabstract(ubuf))buf {
 		return utf8_buf_content(buf)
 	}
-	+ buf_length:buf {
+	+ ($tint) buf_length:($tabstract(ubuf))buf {
 		return utf8_buf_length(buf)
 	}
-	+ buf_size:buf {
+	+ ($tint) buf_size:($tabstract(ubuf))buf {
 		return utf8_buf_size(buf)
 	}
-	+ validate:($tstring)str {
+	+ ($tbool) validate:($tstring)str {
 		return utf8_validate(str)
 	}
-	+ length:($tstring)str {
+	+ ($tint) length:($tstring)str {
 		return utf8_length(str)
 	}
-	+ sub:($tstring)str pos:($tint)pos len:($tint)len {
+	+ ($tstring) sub:($tstring)str pos:($tint)pos len:($tint)len {
 		return utf8_sub(str, pos, len)
 	}
-	+ get:($tstring)str index:($tint)index {
+	+ ($tint) get:($tstring)str index:($tint)index {
 		return utf8_get(str, index)
 	}
-	+ iter:($tstring)str with:($tfunction)func {
+	+ iter:($tstring)str with:(^($tint): _)func {
 		utf8_iter(str, func)
 	}
-	+ compare:($tstring)str1 with:($tstring)str2 {
+	+ ($tint) compare:($tstring)str1 with:($tstring)str2 {
 		return utf8_compare(str1, str2)
 	}
 @end
@@ -55,10 +55,10 @@ var unicode_lower = $loader.loadprim("std@unicode_lower", 2),
 	unicode_upper = $loader.loadprim("std@unicode_upper", 2)
 
 @implementation NL_unicode
-	+ lower:($tstring)str enc:($tint)enc {
+	+ ($tstring) lower:($tstring)str enc:($tint)enc {
 		return unicode_lower(str, enc)
 	}
-	+ upper:($tstring)str enc:($tint)enc {
+	+ ($tstring) upper:($tstring)str enc:($tint)enc {
 		return unicode_upper(str, enc)
 	}
 @end
@@ -106,18 +106,18 @@ var get_env = $loader.loadprim("std@get_env", 1),
 	
 
 @implementation NL_sys
-	+ get_env:($tstring)name {
+	+ ($tstring | $tnull) get_env:($tstring)name {
 		return get_env(name)
 	}
 	+ set_env:($tstring)name to:($tstring)value {
 		put_env(name, value)
 	}
 	
-	+ set_time_locale:($tstring)value {
+	+ ($tbool) set_time_locale:($tstring)value {
 		set_time_locale(value)
 	}
 	
-	+ get_cwd {
+	+ ($tstring) get_cwd {
 		return get_cwd()
 	}
 	+ set_cwd:($tstring)cwd {
@@ -128,34 +128,34 @@ var get_env = $loader.loadprim("std@get_env", 1),
 		sys_sleep(time)
 	}
 	
-	+ command:($tstring)cmd {
+	+ ($tint) command:($tstring)cmd {
 		return sys_command(cmd)
 	}
 	+ exit:($tint)code {
 		sys_exit(code)
 	}
 	
-	+ string {
+	+ ($tstring) string {
 		return sys_string()
 	}
-	+ is64 {
+	+ ($tbool) is64 {
 		return sys_is64()
 	}
-	+ stat:($tstring)file {
+	+ ($tobject) stat:($tstring)file {
 		return sys_stat(file)
 	}
 	
-	+ time {
+	+ ($tfloat) time {
 		return sys_time()
 	}
-	+ cpu_time {
+	+ ($tfloat) cpu_time {
 		return sys_cpu_time()
 	}
-	+ thread_cpu_time {
+	+ ($tfloat) thread_cpu_time {
 		return sys_thread_cpu_time()
 	}
 	
-	+ env {
+	+ ($tarray) env {
 		return sys_env()
 	}
 	
@@ -165,34 +165,34 @@ var get_env = $loader.loadprim("std@get_env", 1),
 	+ remove_dir:($tstring)path {
 		sys_remove_dir(path)
 	}
-	+ read_dir:($tstring)path {
+	+ ($tarray) read_dir:($tstring)path {
 		return sys_read_dir(path)
 	}
 	
-	+ exists:($tstring)item {
+	+ ($tbool) exists:($tstring)item {
 		return sys_exists(item)
 	}
 	+ rename:($tstring)item to:($tstring)name {
 		sys_rename(item, name)
 	}
-	+ file_type:($tstring)path {
+	+ ($tstring) file_type:($tstring)path {
 		return sys_file_type(path)
 	}
 	
-	+ exe_path {
+	+ ($tstring) exe_path {
 		return sys_exe_path()
 	}
 	
-	+ getch:($tbool)echo {
+	+ ($tint) getch:($tbool)echo {
 		return sys_getch(echo)
 	}
 	
-	+ get_pid {
+	+ ($tint) get_pid {
 		return sys_get_pid()
 	}
 	
 	+ win_env_changed {
-		return win_env_changed()
+		win_env_changed()
 	}
 @end
 }
@@ -205,18 +205,18 @@ var file_full_path = $loader.loadprim("std@file_full_path", 1),
 	file_stdin = $loader.loadprim("std@file_stdin", 0)
 
 @implementation NL_file
-	+ full_path:($tstring)path {
+	+ ($tstring) full_path:($tstring)path {
 		return file_full_path(path)
 	}
-	+ contents:($tstring)filename {
+	+ ($tstring) contents:($tstring)filename {
 		return file_contents(filename)
 	}
 	
-	+ read_char:file_obj {
+	+ ($tint) read_char:($tabstract(file))file_obj {
 		return file_read_char(file_obj)
 	}
 	
-	+ stdin {
+	+ ($tabstract(file)) stdin {
 		return file_stdin()
 	}
 @end
@@ -234,35 +234,35 @@ var process_run = $loader.loadprim("std@process_run", 2),
 	process_kill = $loader.loadprim("std@process_kill", 1)
 
 @implementation NL_process
-	+ run:($tstring)cmd args:($tarray)args {
+	+ ($tabstract(process)) run:($tstring)cmd args:($tarray($tstring))args {
 		return process_run(cmd, args)
 	}
 	
 	// idk how this actually works
-	+ stdout_read:proc buf:($tstring)str pos:($tint)pos len:($tint)len {
+	+ ($tint) stdout_read:($tabstract(process))proc buf:($tstring)str pos:($tint)pos len:($tint)len {
 		return process_stdout_read(proc, str, pos, len)
 	}
-	+ stderr_read:proc buf:($tstring)str pos:($tint)pos len:($tint)len {
+	+ ($tint) stderr_read:($tabstract(process))proc buf:($tstring)str pos:($tint)pos len:($tint)len {
 		return process_stderr_read(proc, str, pos, len)
 	}
 	
-	+ stdin_write:proc buf:($tstring)str pos:($tint)pos len:($tint)len {
+	+ ($tint) stdin_write:($tabstract(process))proc buf:($tstring)str pos:($tint)pos len:($tint)len {
 		return process_stdin_write(proc, str, pos, len)
 	}
-	+ stdin_close:proc {
+	+ stdin_close:($tabstract(process))proc {
 		process_stdin_close(proc)
 	}
 	
-	+ exit:proc {
+	+ ($tint) exit:($tabstract(process))proc {
 		return process_exit(proc)
 	}
-	+ pid:proc {
+	+ ($tint) pid:($tabstract(process))proc {
 		return process_pid(proc)
 	}
-	+ close:proc {
+	+ close:($tabstract(process))proc {
 		process_close(proc)
 	}
-	+ kill:proc {
+	+ kill:($tabstract(process))proc {
 		process_kill(proc)
 	}
 @end
@@ -277,19 +277,19 @@ var
 	thread_stack = $loader.loadprim("std@thread_stack", 1)
 
 @implementation NL_thread
-	+ create:($tfunction)fun param:p {
+	+ ($tabstract(thread)) create:(^(_): _)fun param:p {
 		return thread_create(fun, p)
 	}
-	+ current {
+	+ ($tabstract(thread)) current {
 		return thread_current()
 	}
-	+ send:thread message:msg {
+	+ send:($tabstract(thread))thread message:msg {
 		thread_send(thread, msg)
 	}
 	+ read:($tbool)block {
-		thread_read_message(block)
+		return thread_read_message(block)
 	}
-	+ stack:thread { // do NOT use this on the current thread
+	+ stack:($tabstract(thread))thread { // do NOT use this on the current thread
 		return thread_stack(thread)
 	}
 @end
@@ -300,13 +300,13 @@ var
 	lock_release = $loader.loadprim("std@lock_release", 1)
 
 @implementation NL_lock
-	+ create {
+	+ ($tabstract(lock)) create {
 		return lock_create()
 	}
-	+ release:lock {
-		return lock_release(lock)
+	+ release:($tabstract(lock))lock {
+		lock_release(lock)
 	}
-	+ wait:lock timeout:($tnull | $tint | $tfloat)time {
+	+ ($tbool) wait:($tabstract(lock))lock timeout:($tnull | $tint | $tfloat)time {
 		return lock_wait(lock, time)
 	}
 @end
@@ -317,13 +317,13 @@ var
 	tls_set = $loader.loadprim("std@tls_set", 2)
 
 @implementation NL_tls
-	+ create {
+	+ ($tabstract(tls)) create {
 		return tls_create()
 	}
-	+ get:tls {
+	+ get:($tabstract(tls))tls {
 		return tls_get(tls)
 	}
-	+ set:tls to:val {
+	+ set:($tabstract(tls))tls to:val {
 		tls_set(tls, val)
 	}
 @end
@@ -335,16 +335,16 @@ var
 	mutex_release = $loader.loadprim("std@mutex_release", 1)
 
 @implementation NL_mutex
-	+ create {
+	+ ($tabstract(mutex)) create {
 		return mutex_create()
 	}
-	+ acquire:mutex {
+	+ acquire:($tabstract(mutex))mutex {
 		mutex_acquire(mutex)
 	}
-	+ try:mutex {
+	+ ($tbool) try:($tabstract(mutex))mutex {
 		return mutex_try(mutex)
 	}
-	+ release:mutex {
+	+ release:($tabstract(mutex))mutex {
 		mutex_release(mutex)
 	}
 @end
@@ -356,16 +356,16 @@ var
 	deque_pop = $loader.loadprim("std@deque_pop", 2)
 
 @implementation NL_deque
-	+ create {
+	+ ($tabstract(deque)) create {
 		return deque_create()
 	}
-	+ add:deque message:msg {
+	+ add:($tabstract(deque))deque message:msg {
 		deque_add(deque, msg)
 	}
-	+ push:deque message:msg {
+	+ push:($tabstract(deque))deque message:msg {
 		deque_push(deque, msg)
 	}
-	+ pop:deque block:($tbool)block {
+	+ pop:($tabstract(deque))deque block:($tbool)block {
 		return deque_pop(deque, block)
 	}
 @end
@@ -377,10 +377,10 @@ var
 	std_unserialize = $loader.loadprim("std@unserialize", 2)
 
 @implementation NL_serialize
-	+ serialize:obj {
+	+ ($tstring) serialize:obj {
 		return std_serialize(obj)
 	}
-	+ unserialize:($tstring)str loader:loader {
+	+ unserialize:($tstring)str loader:($tobject)loader {
 		return std_unserialize(str, loader)
 	}
 @end
@@ -415,22 +415,22 @@ var regexp_new = $loader.loadprim("regexp@regexp_new", 1),
 		return this
 	}
 	
-	- match:($tstring)str pos:($tint)pos len:($tint)len {
+	- ($tbool) match:($tstring)str pos:($tint)pos len:($tint)len {
 		return regexp_match(this->rx, str, pos, len)
 	}
-	- replace:($tstring)str1 with:($tstring)str2 {
+	- ($tstring) replace:($tstring)str1 with:($tstring)str2 {
 		return regexp_replace(this->rx, str1, str2)
 	}
-	- replace_all:($tstring)str1 with:($tstring)str2 {
+	- ($tstring) replace_all:($tstring)str1 with:($tstring)str2 {
 		return regexp_replace_all(this->rx, str1, str2)
 	}
-	- replace_fun:($tstring)str with:($tfunction)func {
+	- ($tstring) replace_fun:($tstring)str with:(^($tabstract(regexp)): _)func {
 		return regexp_replace_fun(this->rx, str, func)
 	}
-	- matched:($tint)n {
+	- ($tstring | $tnull) matched:($tint)n {
 		return regexp_matched(this->rx, n)
 	}
-	- matched_pos:($tint)n {
+	- ($tobject) matched_pos:($tint)n {
 		return regexp_matched_pos(this->rx, n)
 	}
 @end
@@ -449,34 +449,34 @@ var module_read = $loader.loadprim("std@module_read", 2),
 	module_code_size = $loader.loadprim("std@module_code_size", 1);
 
 @implementation NL_module
-	+ read:($tfunction)fn loader:($tobject)loader {
+	+ ($tabstract(module)) read:(^($tstring, $tint, $tint): $tint)fn loader:($tobject)loader {
 		return module_read(fn, loader)
 	}
-	+ read_path:($tarray)path name:($tstring)name loader:($tobject)loader {
+	+ ($tabstract(module)) read_path:($tarray($tstring))path name:($tstring)name loader:($tobject)loader {
 		return module_read_path(path, name, loader)
 	}
-	+ exec:($tabstract)module {
+	+ exec:($tabstract(module))module {
 		return module_exec(module)
 	}
-	+ name:($tabstract)module {
+	+ ($tstring) name:($tabstract(module))module {
 		return module_name(module)
 	}
-	+ exports:($tabstract)module {
+	+ ($tobject) exports:($tabstract(module))module {
 		return module_exports(module)
 	}
-	+ loader:($tabstract)module {
+	+ ($tobject) loader:($tabstract(module))module {
 		return module_loader(module)
 	}
-	+ nglobals:($tabstract)module {
+	+ ($tint) nglobals:($tabstract(module))module {
 		return module_nglobals(module)
 	}
-	+ global_get:($tabstract)module nth:($tint)n {
+	+ global_get:($tabstract(module))module nth:($tint)n {
 		return module_global_get(module, n)
 	}
-	+ global_set:($tabstract)module nth:($tint)n value:value {
+	+ global_set:($tabstract(module))module nth:($tint)n value:value {
 		module_global_set(module, n, value)
 	}
-	+ code_size:($tabstract)module {
+	+ ($tint) code_size:($tabstract(module))module {
 		return module_code_size(module)
 	}
 @end

@@ -1,4 +1,4 @@
-function _pr_str(obj, $tbool print_readably) {
+function _pr_str(obj, $tbool print_readably): ON_String {
 	return if obj == NULL
 		@"nil"
 	else if objn_Typecheck(MalTrue,obj,true)

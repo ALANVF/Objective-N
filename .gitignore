@@ -6,6 +6,7 @@ parser/project/.bloop
 parser/project/target
 parser/project/project
 parser/target
+parser/null
 *.n
 
 [tests]

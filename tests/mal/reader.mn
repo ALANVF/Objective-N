@@ -1,6 +1,6 @@
 @interface Reader : ON_Object
-	@property tokens
-	@property position
+	@property tokens: ON_Array
+	@property position: $tint
 	
 	- initWithTokens:toks
 	- init
@@ -20,14 +20,14 @@
 		return [this initWithTokens:@[]]
 	}
 	
-	- next {
+	- (ON_String) next {
 		if [this eof]
 			$throw("No more tokens!")
 		else
 			return this->tokens[this->position ++= 1]
 	}
 	
-	- peek {
+	- (ON_String | ON_Nil) peek {
 		return if [this eof]
 			nil
 		else
@@ -39,7 +39,7 @@
 	}
 @end
 
-function tokenize(ON_String str) {
+function tokenize(ON_String str): ON_Array {
 	var regex = [NL_regexp new:"[\\s,]*(~@|[\\[\\]{}()'`~^@]|\"(?:[\\\\].|[^\\\\\"])*\"?|;.*|[^\\s\\[\\]{}()'\"`@,;]+)"]
 
 	var matches = [ON_MutableArray array],
@@ -69,7 +69,7 @@ function tokenize(ON_String str) {
 	return [tokens ON_Array]
 }
 
-function read_atom(Reader rdr) {
+function read_atom(Reader rdr): ON_Object {
 	var regex = [NL_regexp new:"(^-?[0-9]+$)|(^-?[0-9][0-9.]*$)|(^nil$)|(^true$)|(^false$)|^\"((?:[\\\\].|[^\\\\\"])*)\"$|^\"(.*)$|:(.*)|(^[^\"]*$)"]
 	
 	var token = [rdr next]
@@ -144,7 +144,7 @@ function read_atom(Reader rdr) {
 	$throw("read_atom: Invalid token `" + $string(token) + "`")
 }
 
-function read_list(Reader rdr, $tstring start, $tstring end) {
+function read_list(Reader rdr, $tstring start, $tstring end): ON_Array {
 	var token = [rdr next], ast = [ON_MutableArray array]
 	
 	if [token raw] != start
@@ -162,7 +162,7 @@ function read_list(Reader rdr, $tstring start, $tstring end) {
 	return [ast ON_Array]
 }
 
-function read_form(Reader rdr) {
+function read_form(Reader rdr): ON_Object {
 	var token = [rdr peek]
 	if token == null || token == nil || [rdr eof] $throw("error!")
 	return switch [token raw] {
@@ -207,7 +207,7 @@ function read_form(Reader rdr) {
 	}
 }
 
-function read_str(ON_String str) {
+function read_str(ON_String str): ON_Object {
 	var tokens = tokenize(str)
 	
 	if [tokens count] == 0

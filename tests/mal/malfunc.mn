@@ -7,7 +7,7 @@
 		this->env = objn_Copy(env)
 		this->params = objn_Copy(params)
 		this->isMacro = false
-		this->meta = null
+		this->meta = NULL
 		return this
 	}
 	
@@ -18,7 +18,7 @@
 	}
 @end
 
-function apply($tfunction | MalFunc f, ON_Array args) {
+function apply(^($tarray): _ | MalFunc f, ON_Array args) {
 	return if $typeof(f) == $tfunction
 		f(args)
 	else

@@ -3,7 +3,7 @@
 #import "../objn/ON.mn"
 
 @interface Test : ON_Object
-	@property ivar1 (read, write)
+	@property (read, write) ivar1
 	
 	- init
 	- initWithValue:value

@@ -253,7 +253,7 @@
 				"2": {
 					"patterns": [
 						{
-							"match": "(?x)\n\t\t\t\t\t\t\t\t  t(null|int|float|bool|string|object|array|function|abstract)\n\t\t\t\t\t\t\t\t| array  | a(make|copy|size|sub|blit|concat)\n\t\t\t\t\t\t\t\t| string | s(make|size|copy|sub|[gs]et(?:16|32|[fd])?|blit|find)\n\t\t\t\t\t\t\t\t| new    | obj([gs]et(proto)?|call|fields?|remove)\n\t\t\t\t\t\t\t\t| (?:fast)?hash   | field\n\t\t\t\t\t\t\t\t| nargs  | call       | closure          | apply               | varargs\n\t\t\t\t\t\t\t\t| int|ito[fd]    | float|[fd]toi      | is(nan|infinite|bigendian) | i(add|sub|mult|div)\n\t\t\t\t\t\t\t\t| (get|is)kind\n\t\t\t\t\t\t\t\t| h(key|new|resize|get|mem|remove|set|add|iter|count|size)\n\t\t\t\t\t\t\t\t| print  | (re)?throw\n\t\t\t\t\t\t\t\t| istrue | not        | typeof  | p?compare\n\t\t\t\t\t\t\t\t| (exc|call)stack     | version | setresolver\n\t\t\t\t\t\t\t\t| loader | exports\n\t\t\t\t\t\t\t",
+							"match": "(?x)\n\t\t\t\t\t\t\t\t  t(null|int|float|bool|string|object|array|function|abstract)\n\t\t\t\t\t\t\t\t| array  | a(make|copy|size|sub|blit|concat)\n\t\t\t\t\t\t\t\t| string | s(make|size|copy|sub|[gs]et(?:16|32|[fd])?|blit|find)\n\t\t\t\t\t\t\t\t| new    | obj([gs]et(proto)?|call|fields?|remove)\n\t\t\t\t\t\t\t\t| (?:fast)?hash       | field\n\t\t\t\t\t\t\t\t| nargs  | call       | closure          | apply               | varargs\n\t\t\t\t\t\t\t\t| int|ito[fd]         | float|[fd]toi    | is(nan|infinite|bigendian) | i(add|sub|mult|div)\n\t\t\t\t\t\t\t\t| (get|is)kind\n\t\t\t\t\t\t\t\t| h(key|new|resize|get|mem|remove|set|add|iter|count|size)\n\t\t\t\t\t\t\t\t| print  | (re)?throw\n\t\t\t\t\t\t\t\t| istrue | not        | typeof  | p?compare\n\t\t\t\t\t\t\t\t| (exc|call)stack     | version | setresolver\n\t\t\t\t\t\t\t\t| loader | exports\n\t\t\t\t\t\t\t",
 							"name": "support.function.objn"
 						},
 						{
@@ -387,19 +387,174 @@
 				}
 			]
 		},
+		"common-types": {
+			"patterns": [
+				{
+					"begin": "(\\$tarray)(\\()",
+					"beginCaptures": {
+						"1": {
+							"name": "entity.name.type.objn"
+						}
+					},
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "#space"
+						},
+						{
+							"include": "#all-types"
+						},
+						{
+							"include": "#invalid"
+						}
+					]
+				},
+				{
+					"begin": "(\\$tfunction)\\(|(\\^)\\(",
+					"beginCaptures": {
+						"1": {
+							"name": "entity.name.type.objn"
+						},
+						"2": {
+							"name": "keyword.objn"
+						}
+					},
+					"end": "(?<!\\):\\s*|\\^\\(\\s*|\\$tfunction\\(\\s*)(?!\\s*(?:\\):|[a-zA-Z_](?!\\w*\\s*(?:$|,|\\)(?!:)))|[(\\[$^,]|$))|(?=[\\]|]|\\)(?!:))",
+					"patterns": [
+						{
+							"begin": "(\\))(:)",
+							"beginCaptures": {
+								"2": {
+									"name": "keyword.operator.objn"
+								}
+							},
+							"end": "(?<!\\):\\s*)(?!\\s*(?:[a-zA-Z_](?!\\w*\\s*(?:$|,|\\)(?!:)))|[(\\[$^]|$))|(?=,)",
+							"patterns": [
+								{
+									"include": "#space"
+								},
+								{
+									"include": "#all-types"
+								},
+								{
+									"include": "#invalid"
+								}
+							]
+						},
+						{
+							"include": "#space"
+						},
+						{
+							"include": "#comma"
+						},
+						{
+							"include": "#all-types"
+						},
+						{
+							"match": "\\.{3}",
+							"name": "keyword.operator.objn"
+						}
+					]
+				},
+				{
+					"begin": "(\\$tabstract)(\\()",
+					"beginCaptures": {
+						"1": {
+							"name": "entity.name.type.objn"
+						}
+					},
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "#space"
+						},
+						{
+							"match": "[a-zA-Z_]\\w*",
+							"name": "string.objn"
+						},
+						{
+							"include": "#invalid"
+						}
+					]
+				},
+				{
+					"match": "\\$t(null|int|float|bool|string|object|array|function|abstract)(?=\\b)",
+					"name": "entity.name.type.objn"
+				},
+				{
+					"begin": "\\[",
+					"end": "\\]",
+					"patterns": [
+						{
+							"include": "#space"
+						},
+						{
+							"include": "#all-types"
+						}
+					]
+				},
+				{
+					"begin": "\\(",
+					"end": "\\)",
+					"patterns": [
+						{
+							"include": "#space"
+						},
+						{
+							"include": "#all-types"
+						}
+					]
+				},
+				{
+					"match": "\\|",
+					"name": "keyword.operator.objn"
+				}
+			]
+		},
+		"all-types": {
+			"patterns": [
+				{
+					"include": "#common-types"
+				},
+				{
+					"match": "[a-zA-Z_]\\w*(?:\\.[a-zA-Z_]\\w*)*(?=\\b)",
+					"name": "entity.name.type.objn"
+				}
+			]
+		},
 		"function": {
 			"patterns": [
 				{
 					"begin": "(?<=[+\\-*/%<>=!~&|^,(\\[{:;]\\s*|^\\s*)\\^\\s*(?=\\()",
-					"beginCaptures": {
-						"0": {
+					"beginCaptures": [
+						{
 							"name": "keyword.operator.objn"
 						}
-					},
-					"end": "(?<=\\))",
+					],
+					"end": "(?<=\\))(?!:)|(?<=\\):\\s*[a-zA-Z_$(\\[^][\\s\\w$|^\\[\\]():.]*)|(?=\\{)",
 					"patterns": [
 						{
 							"include": "#function-args"
+						},
+						{
+							"include": "#function-ret"
+						},
+						{
+							"include": "#invalid"
+						}
+					]
+				},
+				{
+					"begin": "\\^(?=:)",
+					"beginCaptures": [
+						{
+							"name": "keyword.operator.objn"
+						}
+					],
+					"end": "(?<=\\^)(?!:)|(?<=\\^:\\s*[a-zA-Z_$(\\[^][\\s\\w$|^\\[\\]():.]*)|(?=\\{)",
+					"patterns": [
+						{
+							"include": "#function-ret"
 						},
 						{
 							"include": "#invalid"
@@ -417,10 +572,13 @@
 							"name": "keyword.objn"
 						}
 					},
-					"end": "(?<=\\))",
+					"end": "(?<=\\))(?!:)|(?<=\\):\\s*[a-zA-Z_$(\\[^][\\s\\w$|^\\[\\]():.]*)|(?=\\{)",
 					"patterns": [
 						{
 							"include": "#function-args"
+						},
+						{
+							"include": "#function-ret"
 						},
 						{
 							"include": "#invalid"
@@ -450,7 +608,10 @@
 					"include": "#comma"
 				},
 				{
-					"match": "\\$t(null|int|float|bool|string|object|array|function|abstract)(?=\\b)",
+					"include": "#common-types"
+				},
+				{
+					"match": "[a-zA-Z_]\\w*(?:\\.[a-zA-Z_]\\w*)+(?=\\b)",
 					"name": "entity.name.type.objn"
 				},
 				{
@@ -458,41 +619,82 @@
 					"name": "entity.name.type.objn"
 				},
 				{
-					"match": "\\|",
-					"name": "keyword.operator.objn"
-				},
-				{
 					"match": "[a-zA-Z_]\\w*",
 					"name": "variable.parameter.objn"
 				},
 				{
 					"match": "(?<=\\w)\\.{3}",
-					"name": "keyword.operator"
+					"name": "keyword.operator.objn"
 				},
 				{
 					"include": "#invalid"
 				}
 			]
 		},
+		"function-ret": {
+			"begin": "(?<=[)^]):\\s*",
+			"beginCaptures": [
+				{
+					"name": "keyword.operator.objn"
+				}
+			],
+			"end": "(?<![)^]:\\s*|\\|\\s*)(?!\\s*\\|)|(?=\\{|$)",
+			"patterns": [
+				{
+					"include": "#all-types"
+				}
+			]
+		},
 		"keywords": {
 			"patterns": [
 				{
-					"match": "(?:var|while|do|if|else|try|return|break|continue|for|in)(?=\\b)",
+					"match": "(?:while|do|if|else|try|return|break|continue|for|in)(?=\\b)",
 					"name": "keyword.objn"
 				},
 				{
-					"begin": "catch(?=\\b)",
-					"beginCaptures": {
-						"0": {
+					"begin": "var\\b",
+					"beginCaptures": [
+						{
 							"name": "keyword.objn"
 						}
-					},
+					],
+					"end": "(?=[;)\\]}]|\\bin\\b)|(?<!,\\s*|var\\s*)$",
+					"patterns": [
+						{
+							"include": "#empty"
+						},
+						{
+							"begin": ",\\s*$|,",
+							"beginCaptures": [
+								{
+									"name": "operator.objn"
+								}
+							],
+							"end": "(?=[\\w)\\]};])",
+							"patterns": [
+								{
+									"include": "#empty"
+								}
+							]
+						},
+						{
+							"include": "#~var"
+						}
+					]
+				},
+				{
+					"begin": "catch(?=\\b)",
+					"beginCaptures": [
+						{
+							"name": "keyword.objn"
+						}
+					],
 					"end": "[a-zA-Z_]\\w*",
-					"endCaptures": {
-						"0": {
+					"endCaptures": [
+						{
 							"name": "variable.objn"
 						}
-					},
+					],
 					"patterns": [
 						{
 							"include": "#empty"
@@ -502,7 +704,57 @@
 				{
 					"include": "#switch"
 				}
-			]
+			],
+			"repository": {
+				"~var": {
+					"begin": "[a-zA-Z_]\\w*",
+					"beginCaptures": [
+						{
+							"name": "variable.objn"
+						}
+					],
+					"end": "(?=[,;]|\\bin\\b|$)",
+					"patterns": [
+						{
+							"include": "#empty"
+						},
+						{
+							"begin": ":",
+							"beginCaptures": [
+								{
+									"name": "keyword.operator.objn"
+								}
+							],
+							"end": "(?=[=,;]|\\bin\\b|$)",
+							"patterns": [
+								{
+									"include": "#empty"
+								},
+								{
+									"include": "#all-types"
+								}
+							]
+						},
+						{
+							"begin": "(?<![+\\-*/%&|^!=<>])=(?![=>])",
+							"beginCaptures": [
+								{
+									"name": "keyword.operator.objn"
+								}
+							],
+							"end": "(?=[,;]|\\bin\\b|$)",
+							"patterns": [
+								{
+									"include": "#empty"
+								},
+								{
+									"include": "#exprs"
+								}
+							]
+						}
+					]
+				}
+			}
 		},
 		"call": {
 			"patterns": [
@@ -922,10 +1174,13 @@
 					"name": "entity.name.function.objn"
 				}
 			},
-			"end": "(?<=\\))",
+			"end": "(?<=\\))(?!:)|(?<=\\):\\s*\\$?[a-zA-Z_]\\w*[\\w$|():.]+[\\s\\w$|():.]*)|(?=\\{|$)",
 			"patterns": [
 				{
 					"include": "#function-args"
+				},
+				{
+					"include": "#function-ret"
 				}
 			]
 		},
@@ -1043,112 +1298,106 @@
 					}
 				},
 				{
-					"match": "^\\s*(@property)\\s+([a-zA-Z_]\\w*)\\s*(\\()\\s*([a-z]\\w+(?:\\s*,\\s*[a-z]\\w+)*)\\s*(\\))\\s*(//.*)?$",
-					"captures": {
-						"1": {
+					"begin": "@property\\b",
+					"beginCaptures": [
+						{
 							"name": "keyword.objn"
-						},
-						"2": {
-							"name": "variable.objn"
-						},
-						"3": {
-							"name": "punctuation.definition.attrs.begin.objn"
-						},
-						"4": {
+						}
+					],
+					"end": "$|(?<=;)",
+					"patterns": [
+						{
 							"patterns": [
 								{
 									"include": "#empty"
 								},
 								{
-									"include": "#comma"
+									"begin": "\\(",
+									"end": "$|(?<=;)",
+									"patterns": [
+										{
+											"include": "#empty"
+										},
+										{
+											"include": "#comma"
+										},
+										{
+											"match": "\\b(read|write|static)\\b",
+											"name": "entity.other.attribute-name"
+										},
+										{
+											"begin": "\\)",
+											"end": "$|(?<=;)",
+											"patterns": [
+												{
+													"include": "#~rest"
+												}
+											]
+										},
+										{
+											"include": "#invalid"
+										}
+									]
 								},
 								{
-									"match": "(read|write|static)(?=\\b)",
-									"name": "entity.other.attribute-name"
-								},
-								{
-									"include": "#invalid"
+									"include": "#~rest"
 								}
-							]
-						},
-						"5": {
-							"name": "punctuation.definition.attrs.end.objn"
-						},
-						"6": {
-							"name": "comment.objn"
-						}
-					}
-				},
-				{
-					"begin": "^\\s*(@property)\\s+([a-zA-Z_]\\w*)\\s*(=)\\s*",
-					"beginCaptures": {
-						"1": {
-							"name": "keyword.objn"
-						},
-						"2": {
-							"name": "variable.objn"
-						},
-						"3": {
-							"name": "keyword.operator.assignment"
-						}
-					},
-					"end": ";",
-					"endCaptures": {
-						"0": {
-							"name": "punctuation.terminator.objn"
-						}
-					},
-					"patterns": [
-						{
-							"include": "#exprs"
-						}
-					]
-				},
-				{
-					"begin": "^\\s*(@property)\\s+([a-zA-Z_]\\w*)\\s*(\\()\\s*([a-z]\\w+(?:\\s*,\\s*[a-z]\\w+)*)\\s*(\\))\\s*(=)\\s*",
-					"beginCaptures": {
-						"1": {
-							"name": "keyword.objn"
-						},
-						"2": {
-							"name": "variable.objn"
-						},
-						"3": {
-							"name": "punctuation.definition.attrs.begin.objn"
-						},
-						"4": {
-							"patterns": [
-								{
-									"include": "#empty"
-								},
-								{
-									"include": "#comma"
-								},
-								{
-									"match": "(read|write|static)(?=\\b)",
-									"name": "entity.other.attribute-name"
-								},
-								{
-									"include": "#invalid"
+							],
+							"repository": {
+								"~rest": {
+									"begin": "[a-zA-Z_]\\w*",
+									"beginCaptures": [
+										{
+											"name": "variable.objn"
+										}
+									],
+									"end": "$|(?<=;)",
+									"patterns": [
+										{
+											"include": "#empty"
+										},
+										{
+											"begin": ":",
+											"beginCaptures": [
+												{
+													"name": "keyword.operator.objn"
+												}
+											],
+											"end": "(?=[=;]|$)",
+											"patterns": [
+												{
+													"include": "#empty"
+												},
+												{
+													"include": "#all-types"
+												}
+											]
+										},
+										{
+											"begin": "(?<![+\\-*/%&|^!=<>])=(?![=>])",
+											"beginCaptures": [
+												{
+													"name": "keyword.operator.objn"
+												}
+											],
+											"end": ";",
+											"endCaptures": [
+												{
+													"name": "punctuation.terminator.objn"
+												}
+											],
+											"patterns": [
+												{
+													"include": "#empty"
+												},
+												{
+													"include": "#exprs"
+												}
+											]
+										}
+									]
 								}
-							]
-						},
-						"5": {
-							"name": "punctuation.definition.attrs.end.objn"
-						},
-						"6": {
-							"name": "keyword.operator.assignment"
-						}
-					},
-					"end": ";",
-					"endCaptures": {
-						"0": {
-							"name": "punctuation.terminator.objn"
-						}
-					},
-					"patterns": [
-						{
-							"include": "#exprs"
+							}
 						}
 					]
 				},
@@ -1181,7 +1430,7 @@
 			},
 			"patterns": [
 				{
-					"begin": "^\\s*([+-])\\s*(?=[a-zA-Z_]\\w*:)",
+					"begin": "^\\s*([+-])\\s*(?=[(a-zA-Z_])",
 					"beginCaptures": {
 						"1": {
 							"name": "keyword.operator.objn"
@@ -1190,72 +1439,127 @@
 					"end": "(?=\\{)",
 					"patterns": [
 						{
-							"include": "#method-label"
-						},
-						{
-							"match": "(?<=[:)]\\s*)[a-zA-Z_]\\w*",
-							"name": "variable.parameter.objn"
-						},
-						{
-							"begin": "(?<=:\\s*)\\(",
-							"beginCaptures": {
-								"0": {
-									"name": "punctuation.definition.type-annotation.begin.objn"
-								}
-							},
-							"end": "\\)(?=\\s*[a-zA-Z_])",
-							"endCaptures": {
-								"0": {
-									"name": "punctuation.definition.type-annotation.end.objn"
-								}
-							},
 							"patterns": [
 								{
-									"match": "\\$t(null|int|float|bool|string|object|array|function|abstract)(?=\\b)",
-									"name": "entity.name.type.objn"
+									"include": "#empty"
 								},
 								{
-									"match": "[a-zA-Z_]\\w*(?=\\b)",
-									"name": "entity.name.type.objn"
+									"begin": "\\(",
+									"end": "(?=\\{)",
+									"patterns": [
+										{
+											"include": "#empty"
+										},
+										{
+											"include": "#all-types"
+										},
+										{
+											"begin": "\\)",
+											"end": "(?=\\{)",
+											"patterns": [
+												{
+													"include": "#empty"
+												},
+												{
+													"include": "#~rest"
+												},
+												{
+													"include": "#invalid"
+												}
+											]
+										},
+										{
+											"include": "#invalid"
+										}
+									]
 								},
 								{
-									"match": "\\|",
-									"name": "keyword.operator.objn"
-								},
-								{
-									"include": "#space"
+									"include": "#~rest"
 								},
 								{
 									"include": "#invalid"
 								}
-							]
-						},
-						{
-							"include": "#space"
-						},
-						{
-							"include": "#invalid"
+							],
+							"repository": {
+								"~rest": {
+									"patterns": [
+										{
+											"begin": "(?=\\b[a-zA-Z_]\\w*:)",
+											"end": "(?=\\{)",
+											"patterns": [
+												{
+													"include": "#method-label"
+												},
+												{
+													"match": "(?<=[:)]\\s*)[a-zA-Z_]\\w*",
+													"name": "variable.parameter.objn"
+												},
+												{
+													"begin": "(?<=:\\s*)\\(",
+													"beginCaptures": [
+														{
+															"name": "punctuation.definition.type-annotation.begin.objn"
+														}
+													],
+													"end": "\\)(?=\\s*[a-zA-Z_])",
+													"endCaptures": [
+														{
+															"name": "punctuation.definition.type-annotation.end.objn"
+														}
+													],
+													"patterns": [
+														{
+															"include": "#all-types"
+														},
+														{
+															"include": "#space"
+														},
+														{
+															"include": "#invalid"
+														}
+													]
+												},
+												{
+													"include": "#space"
+												},
+												{
+													"include": "#invalid"
+												}
+											]
+										},
+										{
+											"begin": "\\b[a-zA-Z_]\\w*\\b(?!:)",
+											"beginCaptures": [
+												{
+													"patterns": [
+														{
+															"include": "#meta-field"
+														},
+														{
+															"match": "[a-zA-Z_]\\w*",
+															"name": "entity.name.function.objn"
+														}
+													]
+												}
+											],
+											"end": "(?=\\{)",
+											"patterns": [
+												{
+													"include": "#empty"
+												},
+												{
+													"include": "#invalid"
+												}
+											]
+										},
+										{
+											"include": "#invalid"
+										}
+									]
+								}
+							}
 						}
 					]
-				},
-				{
-					"match": "^\\s*([+-])\\s*([a-zA-Z_]\\w*)(?=\\s*\\{)",
-					"captures": {
-						"1": {
-							"name": "keyword.operator.objn"
-						},
-						"2": {
-							"patterns": [
-								{
-									"include": "#meta-field"
-								},
-								{
-									"match": "[a-zA-Z_]\\w*",
-									"name": "entity.name.function.objn"
-								}
-							]
-						}
-					}
 				},
 				{
 					"include": "#block"

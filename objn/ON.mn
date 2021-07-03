@@ -34,21 +34,21 @@
 		return [ON_Number newWithValue:this->raw + (if $typeof(rval) == $tobject [rval raw] else rval)]
 	}
 	- __radd:($tint | $tfloat | ON_Number)lval {
-		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) + this->raw]
+		return [ON_Number newWithValue:(if $typeof(lval) == $tobject [lval raw] else lval) + this->raw]
 	}
 	
 	- __sub:($tint | $tfloat | ON_Number)rval {
 		return [ON_Number newWithValue:this->raw - (if $typeof(rval) == $tobject [rval raw] else rval)]
 	}
 	- __rsub:($tint | $tfloat | ON_Number)lval {
-		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) - this->raw]
+		return [ON_Number newWithValue:(if $typeof(lval) == $tobject [lval raw] else lval) - this->raw]
 	}
 	
 	- __mult:($tint | $tfloat | ON_Number)rval {
 		return [ON_Number newWithValue:this->raw * (if $typeof(rval) == $tobject [rval raw] else rval)]
 	}
 	- __rmult:($tint | $tfloat | ON_Number)lval {
-		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) * this->raw]
+		return [ON_Number newWithValue:(if $typeof(lval) == $tobject [lval raw] else lval) * this->raw]
 	}
 	
 	// maybe revisit this idk
@@ -56,14 +56,14 @@
 		return [ON_Number newWithValue:this->raw / (if $typeof(rval) == $tobject [rval raw] else rval)]
 	}
 	- __rdiv:($tint | $tfloat | ON_Number)lval {
-		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) / this->raw]
+		return [ON_Number newWithValue:(if $typeof(lval) == $tobject [lval raw] else lval) / this->raw]
 	}
 	
 	- __mod:($tint | $tfloat | ON_Number)rval {
 		return [ON_Number newWithValue:this->raw % (if $typeof(rval) == $tobject [rval raw] else rval)]
 	}
 	- __rmod:($tint | $tfloat | ON_Number)lval {
-		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) % this->raw]
+		return [ON_Number newWithValue:(if $typeof(lval) == $tobject [lval raw] else lval) % this->raw]
 	}
 	
 	// maybe revisit this idk
@@ -71,7 +71,7 @@
 		return [ON_Number newWithValue:this->raw ** (if $typeof(rval) == $tobject [rval raw] else rval)]
 	}
 	- __rpow:($tint | $tfloat | ON_Number)lval {
-		return [ON_Number newWithValue:(if $typeof(rval) == $tobject [lval raw] else lval) ** this->raw]
+		return [ON_Number newWithValue:(if $typeof(lval) == $tobject [lval raw] else lval) ** this->raw]
 	}
 	
 	// ...
@@ -237,7 +237,7 @@
 				[ON_String stringWithNekoString:l[1][0]]
 			]
 		else {
-			var dig = $array(null)
+			var dig: [^(_, $tint): $tint] = $array(null)
 			dig[0] = ^(arr, length) {
 				return if arr[1] == null
 					length + 1
@@ -245,7 +245,7 @@
 					dig[0](arr[1], length + 1)
 			}
 			
-			var out = $amake(dig[0](l, 1))
+			var out: [ON_String] = $amake(dig[0](l, 1))
 			
 			for(var i = 0; l != null; i += 1) {
 				out[i] = @(l[0])
@@ -427,7 +427,7 @@
 		return [[ON_MutableString make] initWithString:str]
 	}
 	
-	- initWithString:(ON_String | ON_MutableString)str {
+	- initWithString:(ON_String)str {
 		this->raw = $scopy([str raw])
 		
 		return this
@@ -482,7 +482,7 @@
 //letter = $aconcat($array(lower_letter, upper_letter)),
 //punct = $array(),
 var alpha = {
-		var _ = $amake(53)
+		var _: [$tint] = $amake(53)
 		for(var i = 0; i < 27; i += 1) _[i] = i + 65
 		_[26] = 95
 		for(var i = 0; i < 27; i += 1) _[i + 27] = i + 97
@@ -491,7 +491,7 @@ var alpha = {
 	number = $array(48, 49, 50, 51, 52, 53, 54, 55, 56, 57),
 	alnum = $aconcat($array(alpha, number)),
 	control = {
-		var _ = $amake(33)
+		var _: [$tint] = $amake(33)
 		for(var i = 0; i < 33; i += 1) _[i] = i
 		_
 	},
@@ -534,7 +534,7 @@ var alpha = {
 	
 	// the way ranges work in objc is weird, so idk if all of this will be accurate.
 	+ characterSetWithCharactersInString:(ON_String)str {
-		var _ = [this make], a = $amake([str length])
+		var _ = [this make], a: [$tint] = $amake([str length])
 		for(var i = 0; i < [str length]; i += 1)
 			a[i] = [NL_UTF8 get:[str raw] index:i]
 		
@@ -544,14 +544,14 @@ var alpha = {
 	+ characterSetWithRange:(ON_Range)range {
 		var _ = [this make]
 		$objget(_, $hash("@instance_vars")).codes = {
-			var a = $amake([range length]+1)
+			var a: [$tint] = $amake([range length]+1)
 			for(var i = 0; i <= [range length]; i += 1) a[i] = [range position] + i
 			a
 		}
 		return _
 	}
 	
-	- _initWithCodepoints:($tarray)codes {
+	- _initWithCodepoints:($tarray($tint))codes {
 		this->codes = codes
 		
 		return this
@@ -567,7 +567,7 @@ var alpha = {
 		return false
 	}
 	- isSupersetOfSet:(ON_CharacterSet)set {
-		var codes = $objget(set, $hash("@instance_vars")).codes
+		var codes: [$tint] = $objget(set, $hash("@instance_vars")).codes
 		for(var i = 0; i < $asize(codes); i += 1) {
 			var b = false
 			for(var j = 0; j < $asize(this->codes); j += 1)
@@ -623,7 +623,7 @@ var alpha = {
 	- arrayByAddingValuesFromArray:(ON_Array)array {
 		return [ON_Array arrayWithNekoArray:$aconcat($array(this->raw, [array raw]))]
 	}
-	- arrayWithFunction:($tfunction)func {
+	- arrayWithFunction:(^(_): _ | ^(_, $tint): _)func {
 		var out = [ON_Array arrayWithArray:this
 		                         copyItems:true]
 		switch $nargs(func) {
@@ -677,6 +677,61 @@ var alpha = {
 		return [[ON_Enumerator make] initWithValues:out]
 	}
 	
+	- indexOfValue:value {
+		for(var i = 0; i < this->count; i += 1)
+			if this->raw[i] == value
+				return i
+		
+		return -1
+	}
+	- indexOfValue:value inRange:(ON_Range)range {
+		var rpos = [range position]
+		var rmax = [range max]
+		
+		if rmax >= this->count
+			rmax = this->count
+		
+		for(var i = rpos; i < rmax; i += 1)
+			if this->raw[i] == value
+				return i
+		
+		return -1
+	}
+	- indexOfValueIdenticalTo:value {
+		for(var i = 0; i < this->count; i += 1)
+			if $pcompare(this->raw[i], value) == 0
+				return i
+		
+		return -1
+	}
+	- indexOfValueIdenticalTo:value inRange:(ON_Range)range {
+		var rpos = [range position]
+		var rmax = [range max]
+		
+		if rmax >= this->count
+			rmax = this->count
+		
+		for(var i = rpos; i < rmax; i += 1)
+			if $pcompare(this->raw[i], value) == 0
+				return i
+		
+		return -1
+	}
+	- indexOfObjectPassingTest:(^(_): $tbool | ^(_, $tint): $tbool | ^(_, $tint, [$tbool]): $tbool)test {
+		switch $nargs(test) {
+			1 => for(var i = 0; i < this->count; i += 1) if test(this->raw[i]) return i
+			2 => for(var i = 0; i < this->count; i += 1) if test(this->raw[i], i) return i
+			3 => {
+				var stop = $array(false)
+				for(var i = 0; i < this->count && !stop[0]; i += 1)
+					if test(this->raw[i], i, stop)
+						return i
+			}
+		}
+		
+		return -1
+	}
+	
 	- isEqualToArray:(ON_Array)array {
 		this->count != [array count] && {return false}
 		this->raw == [array raw] && {return true}
@@ -704,7 +759,7 @@ var alpha = {
 		
 		return nil
 	}
-	- makeValuesPerform:($tfunction)func {
+	- makeValuesPerform:(^(_): _ | ^(_, $tint): _)func {
 		switch $nargs(func) {
 			1 => for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i])
 			2 => for(var i = 0; i < $asize(this->raw); i += 1) func(this->raw[i], i)
@@ -810,7 +865,7 @@ var alpha = {
 		this->count = 1
 		return this
 	}
-	- initWithValues:($tarray)values forKeys:($tarray)keys {
+	- initWithValues:($tarray)values forKeys:($tarray(ON_String))keys {
 		if $asize(values) != $asize(keys)
 			$throw("length of keys and values must be equal!")
 		
@@ -856,7 +911,7 @@ var alpha = {
 	
 	- keyEnumerator {[[ON_Enumerator make] initWithValues:[[this allKeys] raw]]}
 	- valueEnumerator {[[ON_Enumerator make] initWithValues:[[this allValues] raw]]}
-	- enumerateKeysAndValuesUsingBlock:($tfunction)block {
+	- enumerateKeysAndValuesUsingBlock:(^(ON_String, _): _)block {
 		var f = $objfields(this->raw)
 		switch $asize(f) {
 			0 => null

@@ -1,8 +1,9 @@
 package objn
 
-import objn.Ast.{Context, Expr, Statement}
+import objn.Ast.{Context, Expr, Statement => Stmt}
 import objn.Ast.Expr.FuncArgs.Args
 import objn.Ast.Expr.FuncArgs.Varargs
+import scala.collection.mutable.{Map => MutableMap}
 
 // TODO: add support for classes and complex objects
 
@@ -27,6 +28,7 @@ object Checker {
 	}
 	object Type {
 		def fromExprType(etype: Expr.Type): Type = etype match {
+			case Expr.Type.Dynamic => TUnknown
 			case Expr.Type.Builtin(name) => name match {
 				case "$tnull" => TNull
 				case "$tint" => TInt
@@ -39,7 +41,11 @@ object Checker {
 				case "$tabstract" => TAbstract(None)
 			}
 			case Expr.Type.Compound(_) => TObject // fix once compound types are added to the checker
+			case Expr.Type.Paren(t) => fromExprType(t)
 			case Expr.Type.Union(types) => union(types.map(fromExprType) : _*)
+			case Expr.Type.Array(t) => TArray(fromExprType(t))
+			case Expr.Type.Func(params, ret) => TFunction(params.map(_.map(fromExprType)), fromExprType(ret))
+			case Expr.Type.Abstract(name) => TAbstract(Some(name))
 		}
 		
 		def reduce(typ: Type) = typ match {
@@ -130,61 +136,172 @@ object Checker {
 				None
 			case Args(Nil) => Some(Nil)
 			case Args(params2) =>
-				val (types, names) = params2.unzip {
+				val pairs = params2.map {
 					case (None, name) => (TUnknown, name)
 					case (Some(t), name) => (Type.fromExprType(t), name)
 				}
 				
-				var types2 = types
-				for(name <- names) {
-					val t :: tl = types
+				for((t, name) <- pairs) {
 					newCtx.add(name, t)
-					types2 = tl
 				}
 				
-				Some(types)
+				Some(pairs.unzip._1)
 		}
 		
 		(newCtx, paramTypes)
 	}
 	
 	var quiet = false
-	private def warn(msg: String): Unit = if(!quiet) println(msg)
+	def warn(msg: String): Unit = if(!quiet) println(msg)
+	
+	
+	def indexType(ty: Type): Type = ty match {
+		case t if t == TUnknown => TUnknown
+		case TUnion(types) => types.map(indexType).reduceLeft(_ | _)
+		case TArray(_) => TInt
+		case TObject => TUnknown
+		case _ => TInvalid
+	}
+	
+	def elementType(ty: Type): Type = ty match {
+		case t if t == TUnknown => TUnknown
+		case TUnion(types) => types.map(elementType).reduceLeft(_ | _)
+		case TArray(elem) => elem
+		case TObject => TUnknown
+		case _ => TInvalid
+	}
+	
+	class Typer(
+		typeExpr: (Context, Expr) => Type,
+		typeStmt: (Context, Stmt) => Type,
+		isYield: Boolean,
+		default: Type
+	) {
+		def typeExprWith(ctx: Context, expr: Expr): Type = expr match {
+			/*case Expr.Block(stmts) =>
+				val ctx2 = if(stmts.exists(_.isInstanceOf[Stmt.VarDecl])) ctx.inner() else ctx
+				stmts.map(typeStmtWith(ctx2, _)).reduceLeft(_ | _)*/
+			
+			case Expr.For(Some(decl @ Stmt.VarDecl(_)), _, _, stmt) =>
+				val newCtx = ctx.inner()
+				typeStmtWith(newCtx, decl)
+				typeStmtWith(newCtx, stmt)
+			
+			case Expr.ForXInY(isVar, x, y, stmt) =>
+				val newCtx = ctx.inner()
+				val yType = typeExprWith(newCtx, y)
+				val xType = elementType(yType)
+				
+				if(isVar) {
+					newCtx.add(x, xType)
+				} else {
+					if(!(newCtx contains x) && !ctx.outer.isEmpty) warn(s"warning: variable `$x` not found")
+					newCtx.set(x, xType)
+				}
+				
+				typeStmtWith(newCtx, stmt)
+			
+			case Expr.ForXYInZ(isVar, x, y, z, stmt) =>
+				val newCtx = ctx.inner()
+				val zType = typeExprWith(newCtx, z)
+				val xType = indexType(zType)
+				val yType = elementType(zType)
+				
+				if(isVar) {
+					newCtx.add(x, xType)
+					newCtx.add(y, yType)
+				} else {
+					if(!(newCtx contains x) && !ctx.outer.isEmpty) warn(s"warning: variable `$x` not found")
+					if(!(newCtx contains y) && !ctx.outer.isEmpty) warn(s"warning: variable `$y` not found")
+					newCtx.set(x, xType)
+					newCtx.set(y, yType)
+				}
+				
+				typeStmtWith(newCtx, stmt)
+			
+			case _ => typeExpr(ctx, expr)
+		}
+		
+		def typeStmtWith(ctx: Context, stmt: Stmt): Type = stmt match {
+			case expr: Expr => typeExprWith(ctx, expr)
+			case _ => typeStmt(ctx, stmt)
+		}
+	}
+	
+	def typeFlowSwitch(
+		ctx: Context,
+		varName: String,
+		cases: List[Expr.SwitchCase],
+		typer: Typer
+	): Type = {
+		val varType = ctx.find(varName).get
+		val varTypes = MutableMap.from(varType match {
+			case t if t == TUnknown => Map(
+				"$tnull" -> TNull,
+				"$tint" -> TInt,
+				"$tfloat" -> TFloat,
+				"$tbool" -> TBool,
+				"$tstring" -> TString,
+				"$tarray" -> TArray(),
+				"$tobject" -> TObject,
+				"$tfunction" -> TFunction(),
+				"$tabstract" -> TAbstract(None)
+			)
+			case TUnion(ts) => ts.groupMapReduce(t => t.name)(t => t)(_ | _)
+			case TInvalid => Map[String, Type]()
+			case _ => Map(varType.name -> varType)
+		})
+		cases map {
+			case Expr.SwitchCase.Case(Expr.Builtin(builtin), stmt) =>
+				val t = varTypes.remove(builtin).getOrElse(TInvalid)
+				val newCtx = ctx.inner(varName -> t)
+				funcTyper.typeStmtWith(newCtx, stmt)
+			case Expr.SwitchCase.Case(_, stmt) => typer.typeStmtWith(ctx, stmt)
+			case Expr.SwitchCase.Default(stmt) => typer.typeStmtWith(ctx, stmt)
+		} reduceLeft {_ | _}
+	}
+	
+	val funcTyper = new Typer(exprFuncRetType, stmtFuncRetType, true, TUnion(Set()))
 	
 	def exprFuncRetType(ctx: Context, expr: Expr): Type = Type.reduce(expr match {
-		case Expr.Block(stmts) => stmts.map(stmt => stmtFuncRetType(ctx, stmt)).reduce(_ | _)
-		case Expr.If(_, stmt) => stmtFuncRetType(ctx, stmt)
-		case Expr.IfElse(_, stmt1, stmt2) => stmtFuncRetType(ctx, stmt1) | stmtFuncRetType(ctx, stmt2)
-		case Expr.While(_, stmt) => stmtFuncRetType(ctx, stmt)
-		case Expr.DoWhile(stmt, _) => stmtFuncRetType(ctx, stmt)
-		case Expr.For(_, _, _, stmt) => stmtFuncRetType(ctx, stmt)
-		case Expr.ForXInY(_, _, _, stmt) => stmtFuncRetType(ctx, stmt)
-		case Expr.ForXYInZ(_, _, _, _, stmt) => stmtFuncRetType(ctx, stmt)
-		case Expr.TryCatch(tryStmt, _, catchStmt) => stmtFuncRetType(ctx, tryStmt) | stmtFuncRetType(ctx, catchStmt)
+		case Expr.Block(stmts) =>
+			val ctx2 = if(stmts.exists(_.isInstanceOf[Stmt.VarDecl])) ctx.inner() else ctx
+			stmts.map(funcTyper.typeStmtWith(ctx2, _)).reduceLeft {_ | _}
+		case Expr.If(_, stmt) => funcTyper.typeStmtWith(ctx, stmt)
+		case Expr.IfElse(_, stmt1, stmt2) => funcTyper.typeStmtWith(ctx, stmt1) | funcTyper.typeStmtWith(ctx, stmt2)
+		case Expr.While(_, stmt) => funcTyper.typeStmtWith(ctx, stmt)
+		case Expr.DoWhile(stmt, _) => funcTyper.typeStmtWith(ctx, stmt)
+		case Expr.TryCatch(tryStmt, name, catchStmt) => funcTyper.typeStmtWith(ctx, tryStmt) | funcTyper.typeStmtWith(ctx.inner(name -> TUnknown), catchStmt)
 		case Expr.Switch(_, Nil) => TUnion(Set())
+		case Expr.Switch(Expr.Call(Expr.Builtin("$typeof"), List(Expr.Variable(varName))), cases) => typeFlowSwitch(ctx, varName, cases, funcTyper)
 		case Expr.Switch(_, cases) => cases.map {
-			case Expr.SwitchCase.Case(_, stmt) => stmtFuncRetType(ctx, stmt)
-			case Expr.SwitchCase.Default(stmt) => stmtFuncRetType(ctx, stmt)
-		}.reduce(_ | _)
+			case Expr.SwitchCase.Case(_, stmt) => funcTyper.typeStmtWith(ctx, stmt)
+			case Expr.SwitchCase.Default(stmt) => funcTyper.typeStmtWith(ctx, stmt)
+		} reduceLeft {_ | _}
 		case _ => TUnion(Set())
 	})
 	
-	def stmtFuncRetType(ctx: Context, stmt: Statement): Type = Type.reduce(stmt match {
-		case expr: Expr => exprFuncRetType(ctx, expr)
-		case Statement.Return(None) => TNull
-		case Statement.Return(Some(value)) => tryGetType(ctx, value)
+	def stmtFuncRetType(ctx: Context, stmt: Stmt): Type = Type.reduce(stmt match {
+		case expr: Expr => funcTyper.typeExprWith(ctx, expr)
+		case Stmt.Return(None) => TNull
+		case Stmt.Return(Some(value)) => exprTyper.typeExprWith(ctx, value)
 		case _ => TUnion(Set())
 	})
 	
 	def funcRetType(ctx: Context, block: Expr.Block) = {
-		exprFuncRetType(ctx, block) match {
-			case TUnion(types) if types.isEmpty => tryGetType(ctx, block)
+		funcTyper.typeExprWith(ctx, block) match {
+			case TUnion(types) if types.isEmpty => funcTyper.typeExprWith(ctx, block)
 			case t => Type.reduce(t)
 		}
 	}
 	
+	val exprTyper = new Typer(tryGetType, tryGetStmtType, false, TNull)
+	
 	def tryGetType(ctx: Context, expr: Expr): Type = Type.reduce(expr match {
-		case Expr.Variable(name) if(ctx contains name) => ctx.find(name).getOrElse(TUnknown)
+		case Expr.Variable(name) if(ctx contains name) => ctx.find(name).getOrElse({
+			if(ctx.outer.isDefined) warn(s"warning: variable `$name` not found")
+			TUnknown
+		})
 		case Expr.Variable(name) =>
 			warn(s"warning: variable `$name` not found")
 			TNull
@@ -258,7 +375,7 @@ object Checker {
 			case "hcount" | "hsize" => TFunction(Some(List(Type.tHash)), TInt)
 			
 			case "print" => TFunction(None, TNull)
-			case "throw" | "rethrow" => TFunction(Some(List(TUnknown)), TUnknown)
+			case "throw" | "rethrow" => TFunction(Some(List(TUnknown)), TUnion(Set())) // hacky thing because noreturn isn't a type yet
 			case "istrue" | "not" => TFunction(Some(List(TUnknown)), TBool)
 			case "typeof" => TFunction(Some(List(TUnknown)), TInt)
 			case "compare" => TFunction(Some(List(TUnknown, TUnknown)), TNull | TInt)
@@ -282,60 +399,40 @@ object Checker {
 		
 		case _: Expr.ObjNValue => TObject
 		
-		case Expr.Func(params, body) =>
+		case Expr.Func(_, Some(ret), _) => Type.fromExprType(ret) // TODO: check against inferred return type
+		case Expr.Func(params, None, body) =>
 			val (newCtx, paramTypes) = typeFuncParams(ctx, params)
 			TFunction(paramTypes, funcRetType(newCtx, body))
 		
 		case _: Expr.Selector => TObject
 		
 		case Expr.Block(Nil) => TNull
-		case Expr.Block(List(stmt)) => tryGetStmtType(ctx, stmt)
-		case Expr.Block(stmts) => tryGetStmtType(ctx, stmts.last)
+		case Expr.Block(List(stmt)) => exprTyper.typeStmtWith(ctx, stmt)
+		case Expr.Block(stmts) =>
+			val ctx2 = if(stmts.exists(_.isInstanceOf[Stmt.VarDecl])) ctx.inner() else ctx
+			stmts.init.foreach(exprTyper.typeStmtWith(ctx2, _))
+			exprTyper.typeStmtWith(ctx2, stmts.last)
 		
-		case Expr.Box(e) => getBoxedType(ctx, tryGetType(ctx, e))
+		case Expr.Box(e) => getBoxedType(ctx, exprTyper.typeExprWith(ctx, e))
 		
-		case Expr.Paren(e) => tryGetType(ctx, e)
+		case Expr.Paren(e) => exprTyper.typeExprWith(ctx, e)
 		
 		case Expr.Call(Expr.Builtin(builtin), args)
 		if Set("$array","$acopy","$asub","$ablit","$aconcat","$call","$closure","$apply","$varargs")(builtin) =>
-		(builtin.tail, args.map(tryGetType(ctx, _))) match {
+		(builtin.tail, args.map(exprTyper.typeExprWith(ctx, _))) match {
 			case ("array", values) => TArray(reduceUnion(values.toSet))
-			//case ("amake", List(TInt)) => TArray()
 			case ("acopy", List(TArray(elem))) => TArray(elem)
-			//case ("asize", List(TArray(_))) => TInt
 			case ("asub", List(TArray(elem), TInt, TInt)) => TArray(elem)
 			case ("ablit", List(TArray(elem1), TInt, TArray(elem2), TInt, TInt)) =>
 				TArray(if(elem1 == elem2) elem1 else union(elem1, elem2))
 			case ("aconcat", List(TArray(TArray(elem)))) => TArray(elem)
+			case ("aconcat", List(TUnion(types))) if types.forall {
+				case TArray(_) => true
+				case _ => false
+			} => TArray(TUnion(types.collect {
+				case TArray(elem) => elem
+			}))
 			
-			/*case ("string", List(_)) => TString
-			case ("smake", List(TInt)) => TString
-			case ("ssize", List(TString)) => TInt
-			case ("scopy", List(TString)) => TString
-			case ("ssub", List(TString, TInt, TInt)) => TString
-			case ("sget", List(TString, TInt)) => union(TNull, TInt)
-			case ("sget16", List(TString, TInt, TBool)) => union(TNull, TInt)
-			case ("sget32", List(TString, TInt, TBool)) => union(TNull, Type.anyInt)
-			case ("sgetf" | "sgetd", List(TString, TInt, TBool)) => union(TNull, TFloat)
-			case ("sset", List(TString, TInt, TInt)) => union(TNull, TInt)
-			case ("sset16" | "sset32", List(TString, TInt, Type.anyInt, TBool)) => TNull
-			case ("ssetf" | "ssetd", List(TString, TInt, TFloat, TBool)) => TNull
-			case ("sblit", List(TString, TInt, TString, TInt, TInt)) => TNull
-			case ("sfind", List(TString, TInt, TString)) => union(TNull, TInt)
-			
-			case ("new", List(TObject | TNull)) => TObject // FIX
-			case ("objget", List(_, TInt)) => TUnknown
-			case ("objset", List(_, TInt, _)) => TUnknown
-			case ("objcall", List(_, TInt, TArray(_))) => TUnknown
-			case ("objfield", List(_, TInt)) => TBool
-			case ("objremove", List(TObject, TInt)) => TBool
-			case ("objfields", List(TObject)) => TArray(TInt)
-			case ("hash" | "fasthash", List(TString)) => TInt
-			case ("field", List(TInt)) => TString
-			case ("objsetproto", List(TObject, TObject | TNull)) => TNull // FIX
-			case ("objgetproto", List(TObject)) => union(TObject, TNull)
-			
-			case ("nargs", List(TFunction(_, _))) => TInt*/
 			case ("call", List(TFunction(None, ret), _, TArray(_))) => ret
 			case ("closure", TFunction(params, ret) :: _ :: Nil) => TFunction(params, ret)
 			case ("closure", TFunction(Some(params), ret) :: _ :: args) =>
@@ -362,48 +459,15 @@ object Checker {
 				}
 			case ("varargs", List(TFunction(_, ret))) => TFunction(None, ret)
 			
-			/*case ("iadd" | "isub" | "imult" | "idiv", List(_, _)) => TInt
-			case ("isnan" | "isinfinite", List(_)) => TBool
-			case ("int", List(TInt | TFloat)) => TInt
-			case ("int", List(_)) => union(TNull, TInt)
-			case ("float", List(TInt | TFloat)) => TFloat
-			case ("float", List(_)) => union(TNull, TFloat)
-			case ("itof", List(TInt | Type.tInt32, TBool)) => TFloat
-			case ("ftoi", List(TFloat, TBool)) => Type.anyInt
-			case ("itod", List(TInt | Type.tInt32, TInt | Type.tInt32, TBool)) => TFloat
-			case ("dtoi", List(TFloat, TArray(TInt | Type.tKind))) => TNull
-			case ("isbigendian", Nil) => TBool
-			
-			case ("getkind", List(TAbstract(_))) => Type.tKind
-			case ("iskind", List(_, Type.tKind)) => TBool
-			
-			case ("hkey", List(_)) => TInt
-			case ("hnew", List(TInt)) => Type.tHash
-			case ("hresize", List(Type.tHash, TInt)) => TNull
-			case ("hget" | "hmem" | "hremove", List(Type.tHash, _, TFunction(Some(List(_, _)), _) | TNull)) => TUnknown
-			case ("hset", List(Type.tHash, _, _, TFunction(Some(List(_, _)), _) | TNull)) => TBool
-			case ("hadd", List(Type.tHash, _, _)) => TNull
-			case ("hiter", List(Type.tHash, TFunction(Some(List(_, _)), _))) => TNull
-			case ("hcount" | "hsize", List(Type.tHash)) => TInt
-			
-			case ("print", _) => TNull
-			case ("throw" | "rethrow", List(_)) => TUnknown
-			case ("istrue" | "not", List(_)) => TBool
-			case ("typeof", List(_)) => TInt
-			case ("compare", List(_, _)) => TNull | TInt
-			case ("pcompare", List(_, _)) => TInt
-			case ("excstack" | "callstack", Nil) => TArray()
-			case ("version", Nil) => TInt
-			case ("setresolver", List(TFunction(Some(List(TObject, TInt)), _) | TNull)) => TNull*/
 			case (_, argTypes) =>
-				if(argTypes.exists(t => t != TUnknown)) {
+				if(argTypes.exists(_ != TUnknown)) {
 					warn(s"warning: possibly invalid call to builtin `$builtin` in `${expr.toObjn()}`")
 					warn("\targument types: " + argTypes.map(_.toObjn()).mkString("(", ", ", ")"))
 				}
 				TUnknown
 		}
 		case Expr.Call(caller, args) =>
-			val callerType = tryGetType(ctx, caller)
+			val callerType = exprTyper.typeExprWith(ctx, caller)
 			
 			if(callerType == TUnknown) {
 				TUnknown
@@ -423,7 +487,7 @@ object Checker {
 				funcTypes match {
 					case Nil => TInvalid
 					case (params, ret) :: Nil =>
-						val argTypes = args.map(a => tryGetType(ctx, a))
+						val argTypes = args.map(a => exprTyper.typeExprWith(ctx, a))
 						if(params.isEmpty || params.get.corresponds(argTypes) {(p, a) => p accepts a}) {
 							ret
 						} else {
@@ -434,7 +498,7 @@ object Checker {
 						}
 					case _ =>
 						warn("warning: function called has multiple potential types")
-						val argTypes = args.map(a => tryGetType(ctx, a))
+						val argTypes = args.map(a => exprTyper.typeExprWith(ctx, a))
 						funcTypes.find {
 							case (None, _) => true
 							case (Some(params), _) => params.corresponds(argTypes) {(p, a) => p accepts a}
@@ -452,7 +516,21 @@ object Checker {
 				}
 			}
 		
-		case Expr.GetIndex(value, index) => (tryGetType(ctx, value), tryGetType(ctx, index)) match {
+		case Expr.GetIndex(value, index) => (exprTyper.typeExprWith(ctx, value), exprTyper.typeExprWith(ctx, index)) match {
+			case (TUnion(types), indexType) =>
+				if(types.forall {case TArray(_) => true; case _ => false}) {
+					indexType match {
+						case TUnion(ts) if ts(TInt) => TUnknown
+						case TUnion(_) => TInvalid 
+						case TInt => types collect {case TArray(elem) => elem} reduceLeft {_ | _}
+						case TUnknown => TUnknown
+						case _ => TInvalid
+					}
+				} else if(types.forall {case TArray(_) | TObject => true; case _ => false}) {
+					TUnknown
+				} else {
+					TInvalid
+				}
 			case (TArray(elem), TInt) => elem
 			case (TArray(_), TUnknown) => TUnknown
 			case (TArray(_), _) => TInvalid
@@ -460,12 +538,12 @@ object Checker {
 			case _ => TInvalid
 		}
 		
-		case Expr.GetField(value, _) => tryGetType(ctx, value) match {
+		case Expr.GetField(value, _) => exprTyper.typeExprWith(ctx, value) match {
 			case TObject | TUnknown => TUnknown
 			case _ => TInvalid
 		}
 		
-		case Expr.Op.Infix(left, op, right) => (tryGetType(ctx, left), op, tryGetType(ctx, right)) match {
+		case Expr.Op.Infix(left, op, right) => (exprTyper.typeExprWith(ctx, left), op, exprTyper.typeExprWith(ctx, right)) match {
 			case (TInt | TFloat, "/" | "**" | "/=" | "**=", TInt | TFloat) => TFloat
 			case (TInt, "+" | "-" | "*" | "%" | "+=" | "-=" | "++=" | "--=" | "*=" | "%=" , TInt) => TInt
 			case (TInt, "+" | "-" | "*" | "%" | "+=" | "-=" | "++=" | "--=" | "*=" | "%=" , TFloat) |
@@ -479,7 +557,7 @@ object Checker {
 			case _ => TInvalid
 		}
 		
-		case Expr.Op.Prefix(op, right) => (op, tryGetType(ctx, right)) match {
+		case Expr.Op.Prefix(op, right) => (op, exprTyper.typeExprWith(ctx, right)) match {
 			case (_, TObject | TUnknown) => TUnknown
 			case ("!", _) => TBool
 			case ("+" | "-", r @ (TInt | TFloat)) => r
@@ -487,16 +565,17 @@ object Checker {
 			case _ => TInvalid
 		}
 		
-		case Expr.If(_, trueBlk) => tryGetStmtType(ctx, trueBlk) | TNull
+		case Expr.If(_, trueBlk) => exprTyper.typeStmtWith(ctx, trueBlk) | TNull
 		
-		case Expr.IfElse(_, trueBlk, falseBlk) => tryGetStmtType(ctx, trueBlk) | tryGetStmtType(ctx, falseBlk)
+		case Expr.IfElse(_, trueBlk, falseBlk) => exprTyper.typeStmtWith(ctx, trueBlk) | exprTyper.typeStmtWith(ctx, falseBlk)
 		
-		case Expr.TryCatch(tryStmt, _, catchStmt) => tryGetStmtType(ctx, tryStmt) | tryGetStmtType(ctx, catchStmt)
+		case Expr.TryCatch(tryStmt, name, catchStmt) => exprTyper.typeStmtWith(ctx, tryStmt) | exprTyper.typeStmtWith(ctx.inner(name -> TUnknown), catchStmt)
 		
 		case Expr.Switch(_, Nil) => TNull
+		case Expr.Switch(Expr.Call(Expr.Builtin("$typeof"), List(Expr.Variable(varName))), cases) => typeFlowSwitch(ctx, varName, cases, exprTyper)
 		case Expr.Switch(_, cases) => cases map {
-			case Expr.SwitchCase.Case(_, stmt) => tryGetStmtType(ctx, stmt)
-			case Expr.SwitchCase.Default(stmt) => tryGetStmtType(ctx, stmt)
+			case Expr.SwitchCase.Case(_, stmt) => exprTyper.typeStmtWith(ctx, stmt)
+			case Expr.SwitchCase.Default(stmt) => exprTyper.typeStmtWith(ctx, stmt)
 		} reduceLeft {_ | _}
 		
 		case Expr.Truthy(_) => TBool
@@ -506,36 +585,55 @@ object Checker {
 		case _ => TUnknown
 	})
 	
-	def tryGetStmtType(ctx: Context, stmt: Statement): Type = stmt match {
-		case expr: Expr => tryGetType(ctx, expr)
+	def tryGetStmtType(ctx: Context, stmt: Stmt): Type = stmt match {
+		case expr: Expr => exprTyper.typeExprWith(ctx, expr)
 		
-		case Statement.VarDecl(decls) =>
+		case Stmt.VarDecl(decls) =>
 			decls foreach {
-				case (name, None) => ctx.add(name, TNull)
-				case (name, Some(value)) => ctx.add(name, tryGetType(ctx, value))
+				case (name, None, None) => ctx.add(name, TNull)
+				case (name, Some(t), None) => ctx.add(name, Type.fromExprType(t))
+				case (name, None, Some(value)) => ctx.add(name, exprTyper.typeExprWith(ctx, value))
+				// TODO: actually check against expr type
+				case (name, Some(t), Some(value)) => ctx.add(name, Type.fromExprType(t))
 			}
 			TNull
 		
-		case Statement.FuncDecl(name, params, body) =>
+		case Stmt.FuncDecl(name, params, ret, body) =>
 			// maybe this will work? idk need to figure out recursive functions
 			val (newCtx, paramTypes) = typeFuncParams(ctx, params)
-			if(!ctx.contains(name)) ctx.add(name, TFunction(paramTypes, TUnknown))
-			ctx.add(name, TFunction(paramTypes, funcRetType(newCtx, body)))
+			
+			if(!newCtx.contains(name)) {
+				warn("thing "+name)
+				ctx.add(name, TFunction(paramTypes, TUnknown))
+			}
+			
+			val retType = ret.map(Type.fromExprType(_))
+			ctx.add(name, TFunction(paramTypes, {
+				val inferred = Checker.funcRetType(newCtx, body)
+				retType match {
+					case Some(ret) =>
+						if(!(ret accepts inferred)) {
+							warn("warning: type `"+inferred.toObjn()+"` doesn't match specified return type `"+ret.toObjn()+"`")
+						}
+						ret
+					case None => inferred
+				}
+			}))
 			TNull
 		
-		case Statement.Interface(name, _, _) =>
+		case Stmt.Interface(name, _, _) =>
 			// TODO: fix once class types are added to inference
 			ctx.add(name, TObject)
 			TNull
 		
-		case Statement.Implementation(_, _) => TNull
+		case Stmt.Implementation(_, _) => TNull
 		
-		case Statement.Return(None) | Statement.Break(None) | Statement.Continue => TNull
-		case Statement.Return(Some(ret)) => tryGetType(ctx, ret)
-		case Statement.Break(Some(ret)) => tryGetType(ctx, ret)
+		case Stmt.Return(None) | Stmt.Break(None) | Stmt.Continue => TNull
+		case Stmt.Return(Some(ret)) => exprTyper.typeExprWith(ctx, ret)
+		case Stmt.Break(Some(ret)) => exprTyper.typeExprWith(ctx, ret)
 		
 		// TODO: respect imports in typer
-		case Statement.ImportLib(_, _) | Statement.ImportFile(_, _) => TNull
+		case Stmt.ImportLib(_, _) | Stmt.ImportFile(_, _) => TNull
 		
 		case _ => TInvalid
 	}

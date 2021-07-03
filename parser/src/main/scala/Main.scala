@@ -14,30 +14,45 @@ object Main extends App {
 		def variable: Parser[String] = not(neko_value | objn_value | keyword) ~> name
 		def builtin:  Parser[Expr] = "\\$\\w+".r ^^ Expr.Builtin.apply
 		
-		def validType: Parser[Expr.Type] = rep1sep(
+		def basicValidType: Parser[Expr.Type] = (
+			"_" ^^^ Expr.Type.Dynamic
+				|
 			(
-				(
-					"$tnull"     |
-					"$tint"      |
-					"$tfloat"    |
-					"$tbool"     |
-					"$tstring"   |
-					"$tobject"   |
-					"$tarray"    |
-					"$tfunction" |
-					"$tabstract"
-				) ^^ Expr.Type.Builtin.apply
-					|
-				rep1sep(name, ".") ^^ Expr.Type.Compound.apply
-			),
-			"|"
-		) ^^ {
+				"$tnull"                 |
+				"$tint"                  |
+				"$tfloat"                |
+				"$tbool"                 |
+				"$tstring"               |
+				"$tobject"               |
+				"$tarray"    <~ not("(") |
+				"$tfunction" <~ not("(") |
+				"$tabstract" <~ not("(")
+			) ^^ Expr.Type.Builtin.apply
+				|
+			rep1sep(name, ".") ^^ Expr.Type.Compound.apply
+				|
+			(
+				"$tarray(" ~> validType <~ ")" |
+				"[" ~> validType <~ "]"
+			) ^^ Expr.Type.Array.apply
+				|
+			(("$tfunction" | "^(") ~> (
+				"..." ^^^ None |
+				repsep(validType, ",") ^^ Some.apply
+			)) ~ ("):" ~> basicValidType) ^^ {
+				case params ~ ret => Expr.Type.Func(params, ret)
+			}
+				|
+			"$tabstract(" ~> name <~ ")" ^^ Expr.Type.Abstract.apply
+		)
+		
+		def validType: Parser[Expr.Type] = rep1sep(basicValidType, "|") ^^ {
 			case List(t) => t
 			case ts => Expr.Type.Union(ts)
 		}
 		
 		def neko_value: Parser[Expr] = (
-			raw"""(?:"(?:\\\\||\\"||[^"])*?")""".r ^^ { s => Expr.NekoValue.String(s.tail.init) }
+			raw"""(?:"(?:\\x[a-fA-F\d]{2}|\\.|[^\\"]+)*?")""".r ^^ { s => Expr.NekoValue.String(s.tail.init) }
 				|
 			"\\d+\\.\\d+".r ^^ { f => Expr.NekoValue.Float(f.toDouble) }
 				|
@@ -57,7 +72,7 @@ object Main extends App {
 				|
 			"NULL" ^^^ Expr.ObjNValue.Null
 				|
-			raw"""(?:@"(?:\\\\||\\"||[^"])*?")""".r ^^ { s => Expr.ObjNValue.String(s.drop(2).init) }
+			raw"""(?:@"(?:\\x[a-fA-F\d]{2}|\\.|[^\\"]+)*?")""".r ^^ { s => Expr.ObjNValue.String(s.drop(2).init) }
 				|
 			"@\\d+\\.\\d+".r ^^ { f => Expr.ObjNValue.Float(f.tail.toDouble) }
 				|
@@ -77,10 +92,10 @@ object Main extends App {
 						|||
 					(name <~ "...") ^^ Expr.FuncArgs.Varargs.apply
 				) <~ ")"
-			).? ~ block
+			).? ~ (":" ~> validType).? ~ block
 		) ^^ {
-			case None ~ b => Expr.Func(Expr.FuncArgs.Args(List()), b)
-			case Some(a) ~ b => Expr.Func(a, b)
+			case None ~ ret ~ b => Expr.Func(Expr.FuncArgs.Args(List()), ret, b)
+			case Some(a) ~ ret ~ b => Expr.Func(a, ret, b)
 		}
 
 		def message: Parser[Expr] =
@@ -277,9 +292,9 @@ object Main extends App {
 					}
 					
 						|
-					"@property" ~> name ~ ("(" ~> rep1sep(name, ",") <~ ")").? ~ ("=" ~> expr <~ ";").? ^^ {
-						case n ~ None ~ v => Some(Statement.InterfaceBody.Property(n, List(), v))
-						case n ~ Some(a) ~ v => Some(Statement.InterfaceBody.Property(n, a, v))
+					"@property" ~> ("(" ~> rep1sep(name, ",") <~ ")").? ~ name ~ (":" ~> validType).? ~ ("=" ~> expr <~ ";").? ^^ {
+						case None ~ n ~ t ~ v => Some(Statement.InterfaceBody.Property(List(), n, t, v))
+						case Some(a) ~ n ~ t ~ v => Some(Statement.InterfaceBody.Property(a, n, t, v))
 					}
 						|
 					lineComment ^^^ None
@@ -291,13 +306,13 @@ object Main extends App {
 		def objn_implementation: Parser[Statement] =
 			(
 				("@implementation" ~> name) /*~ ("(" ~> rep1sep(name, ",") <~ ")").?*/ ~ (
-					objn_method_kind ~ (
+					objn_method_kind ~ ("(" ~> validType <~ ")").? ~ (
 						name ^^ Left.apply
 							|||
 						((name <~ ":") ~ ("(" ~> validType <~ ")").? ~ name ^^ {case l ~ t ~ r => (l, t, r)}).+ ^^ Right.apply
 					) ~ block ^^ {
-						case k ~ Left(n) ~ b => Some(Statement.ImplementationBody.SingleMethod(k, n, b))
-						case k ~ Right(args) ~ b => Some(Statement.ImplementationBody.MultiMethod(k, args, b))
+						case k ~ t ~ Left(n) ~ b => Some(Statement.ImplementationBody.SingleMethod(k, t, n, b))
+						case k ~ t ~ Right(args) ~ b => Some(Statement.ImplementationBody.MultiMethod(k, t, args, b))
 					}
 						|
 					lineComment ^^^ None
@@ -308,7 +323,7 @@ object Main extends App {
 
 		//statements:
 		def var_decl: Parser[Statement] =
-			"var" ~> rep1sep(name ~ ("=" ~> expr).? ^^ {case n ~ v => (n, v)}, ",") ^^ Statement.VarDecl.apply
+			"var" ~> rep1sep(name ~ (":" ~> validType).? ~ ("=" ~> expr).? ^^ {case n ~ t ~ v => (n, t, v)}, ",") ^^ Statement.VarDecl.apply
 
 		def return_stmt: Parser[Statement] = "return" ~> expr.? ^^ Statement.Return.apply
 
@@ -323,13 +338,13 @@ object Main extends App {
 						|||
 					(name <~ "...") ^^ Expr.FuncArgs.Varargs.apply
 				) <~ ")"
-			) ~ block
+			) ~ (":" ~> validType).? ~ block
 		) ^^ {
-			case n ~ a ~ b => Statement.FuncDecl(n, a, b)
+			case n ~ a ~ ret ~ b => Statement.FuncDecl(n, a, ret, b)
 		}
 
 		def import_macro_stmt: Parser[Statement] =
-			"#import" ~> ("\"(?:\\\"|[^\"])*?\"".r) ^^ {e =>
+			"#import" ~> ("\"(?:\\.|[^\\\"])*?\"".r) ^^ {e =>
 				val filePath = s"$e".init.tail
 				
 				if(ctx.imports.contains(filePath)) {
@@ -357,7 +372,12 @@ object Main extends App {
 						Source.fromFile(filePath).mkString
 					} else if((filePath endsWith ".mn") || (filePath endsWith ".hn")) {
 						ctx.imports(filePath) = "" // To prevent circular imports
-						parser(Source.fromFile(filePath).mkString)
+						try {
+							parser(Source.fromFile(filePath).mkString)
+						} catch {
+							case e: java.lang.RuntimeException =>
+								throw new java.lang.RuntimeException(s"Error parsing file `$filePath`: ${e.getMessage()}", e)
+						}
 					} else {
 						scala.sys.error("Invalid file import \"" + filePath + "\"!")
 					}
@@ -400,34 +420,40 @@ object Main extends App {
 					Checker.quiet = true
 					
 					val funcDecls = result.collect {
-						case Statement.FuncDecl(name, params, body) =>
+						case Statement.FuncDecl(name, params, ret, body) =>
 							val (newCtx, paramTypes) = Checker.typeFuncParams(ctx, params)
-							(name, params, body, newCtx, paramTypes)
+							val retType = ret.map(Checker.Type.fromExprType(_))
+							(name, params, retType, body, newCtx, paramTypes)
 					}
 					
-					for((name, params, body, newCtx, paramTypes) <- funcDecls) {
-						ctx.add(name, Checker.TFunction(paramTypes, Checker.TUnknown))
+					for((name, params, retType, body, newCtx, paramTypes) <- funcDecls) {
+						ctx.add(name, Checker.TFunction(paramTypes, retType.getOrElse(Checker.TUnknown)))
 					}
 					
-					for((name, params, body, newCtx, paramTypes) <- funcDecls) {
-						ctx.set(name, Checker.TFunction(paramTypes, Checker.funcRetType(newCtx.inner(), body)))
+					for((name, params, retType, body, newCtx, paramTypes) <- funcDecls) {
+						ctx.set(name, Checker.TFunction(paramTypes, {
+							val inferred = Checker.funcRetType(newCtx.inner(), body)
+							retType match {
+								case Some(ret) =>
+									/*if(!(ret accepts inferred)) {
+										//Checker.quiet = false
+										Checker.warn("warning: type `"+inferred.toObjn()+"` doesn't match specified return type `"+ret.toObjn()+"`")
+										//Checker.quiet = true
+									}*/
+									ret
+								case None => inferred
+							}
+						}))
 					}
-					
-					/*for((name, params, body, newCtx, paramTypes) <- funcDecls.reverse) {
-						ctx.set(name, Checker.TFunction(paramTypes, Checker.tryGetType(newCtx.inner(), body)))
-					}
-					
-					for((name, params, body, newCtx, paramTypes) <- funcDecls) {
-						ctx.set(name, Checker.TFunction(paramTypes, Checker.tryGetType(newCtx.inner(), body)))
-					}*/
 					
 					Checker.quiet = false
 					
 					for(stmt <- result) {
-						if(Checker.tryGetStmtType(ctx, stmt) == Checker.TInvalid) {
-							scala.sys.error("Invalid type for statement `"+stmt.toNeko(ctx)+"`")
+						if(Checker.exprTyper.typeStmtWith(ctx, stmt) == Checker.TInvalid) {
+							scala.sys.error("Invalid type for statement `"+stmt.toNeko(ctx)+"`") // TODO: change to toObjn
 						}
 					}
+					
 					result.map(_.toNeko(ctx)).mkString(";\n")
 				case failure: NoSuccess => scala.sys.error(failure.toString)
 			}
@@ -436,39 +462,55 @@ object Main extends App {
 
 	val parser = new ONParser
 	val flag = "^\\-.*".r
+	val debug = true
 	
-	args(0) match {
-		case "-h" | "--help" => println("Usage: `objn-parser [options] filename` (you don't need the file extension).\n\n" +
-			"-h, --help | Display this message.\n" +
-			"-c         | Compile to Neko only.\n" +
-			"-b         | Compile to Neko Bytecode only.")
-		
-		case "-c" => {
-			val sourceFile = Source.fromFile(args(1) + ".mn").mkString
-			var output = s"// ${args(1)}.mn" + "\n\n" + parser(sourceFile)
+	if(args.length == 0) {
+		if(debug) {
+			val path = "../tests/test5/main"
+			val sourceFile = Source.fromFile(path+".mn").mkString
+			var output = s"// $path.mn\n\n" + parser(sourceFile)
 			
-			new PrintWriter(args(1) + ".neko") {write(output); close}
+			new PrintWriter(path+".neko") {write(output); close}
+			
+			s"nekoc $path.neko".!
+			s"neko $path.n".!
+		} else {
+			println("Use -h or --help to display a help message.")
 		}
-		
-		case "-b" => {
-			val sourceFile = Source.fromFile(args(1) + ".mn").mkString
-			var output = s"// ${args(1)}.mn" + "\n\n" + parser(sourceFile)
+	} else {
+		args(0) match {
+			case "-h" | "--help" => println("Usage: `objn-parser [options] filename` (you don't need the file extension).\n\n" +
+				"-h, --help | Display this message.\n" +
+				"-c         | Compile to Neko only.\n" +
+				"-b         | Compile to Neko Bytecode only.")
 			
-			new PrintWriter(args(1) + ".neko") {write(output); close}
+			case "-c" => {
+				val sourceFile = Source.fromFile(args(1) + ".mn").mkString
+				var output = s"// ${args(1)}.mn" + "\n\n" + parser(sourceFile)
+				
+				new PrintWriter(args(1) + ".neko") {write(output); close}
+			}
 			
-			s"nekoc ${args(1)}.neko".!
-		}
-		
-		case flag(_*) => println(s"Unknown flag `${args(0)}`. Try -h or --help to see all options.")
-		
-		case _ => {
-			val sourceFile = Source.fromFile(args(0) + ".mn").mkString
-			var output = s"// ${args(0)}.mn\n\n" + parser(sourceFile)
+			case "-b" => {
+				val sourceFile = Source.fromFile(args(1) + ".mn").mkString
+				var output = s"// ${args(1)}.mn" + "\n\n" + parser(sourceFile)
+				
+				new PrintWriter(args(1) + ".neko") {write(output); close}
+				
+				s"nekoc ${args(1)}.neko".!
+			}
 			
-			new PrintWriter(args(0) + ".neko") {write(output); close}
+			case flag(_*) => println(s"Unknown flag `${args(0)}`. Try -h or --help to see all options.")
 			
-			s"nekoc ${args(0)}.neko".!
-			s"neko ${args(0)}.n ${args.tail.mkString(" ")}".!
+			case _ => {
+				val sourceFile = Source.fromFile(args(0) + ".mn").mkString
+				var output = s"// ${args(0)}.mn\n\n" + parser(sourceFile)
+				
+				new PrintWriter(args(0) + ".neko") {write(output); close}
+				
+				s"nekoc ${args(0)}.neko".!
+				s"neko ${args(0)}.n ${args.tail.mkString(" ")}".!
+			}
 		}
 	}
 }

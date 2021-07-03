@@ -1,8 +1,8 @@
 // env definition
 
 @interface Env : ON_Object
-	@property data (read) //ON_MutableDictionary
-	@property outer //Env
+	@property (read) data: ON_MutableDictionary
+	@property outer: Env | ON_Nil
 	
 	- initWithBindings:outer binds:binds exprs:exprs
 	- initWithOuter:outer
@@ -54,7 +54,7 @@ function block_Q(obj) {}
 // atoms
 
 @interface MalAtom : ON_Object
-	@property val (read, write)//ON_Object
+	@property (read, write) val: ON_Object
 	
 	- init:val
 	
