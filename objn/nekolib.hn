@@ -12,7 +12,32 @@
 	+ compare:str1 with:str2
 @end
 
+/* encodings:
+ * ascii = 0
+ * iso-latin1 = 1
+ * utf8 = 2
+ * ucs2-be = 3
+ * ucs2-le = 4
+ * utf16-be = 5
+ * utf16-le = 6
+ * utf32-be = 7
+ * utf32-le = 8
+*/
 @interface NL_unicode : ON_Object
+	+ buf_alloc:size enc:enc
+	+ buf_add:buf char:char
+	+ buf_content:buf
+	+ buf_length:buf
+	+ buf_size:buf
+	
+	+ get:str enc:enc index:index
+	+ validate:str enc:enc
+	+ iter:str enc:enc with:func
+	+ length:str enc:enc
+	+ compare:str1 with:str2 enc:enc
+	+ sub:str enc:enc pos:pos len:len
+	
+	+ convert:str from_enc:from to_enc:to
 	+ lower:str enc:enc
 	+ upper:str enc:enc
 @end
@@ -143,9 +168,11 @@
 
 @interface NL_module : ON_Object
 	+ read:fn loader:loader
+	+ read_string:str loader:loader
 	+ read_path:path name:name loader:loader
 	+ exec:module
 	+ name:module
+	+ set_name:module to:name
 	+ exports:module
 	+ loader:module
 	+ nglobals:module

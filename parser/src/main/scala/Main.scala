@@ -223,7 +223,7 @@ object Main extends App {
 					|
 				(expr <~ "=>") ~ statement  ^^ {case e ~ s => Some(Expr.SwitchCase.Case(e, s))}
 					|
-				lineComment ^^^ None
+				(lineComment | multilineComment) ^^^ None
 			).* <~ "}") ^^ {
 				case e ~ b => Expr.Switch(e, b.flatten)
 			}
@@ -297,7 +297,7 @@ object Main extends App {
 						case Some(a) ~ n ~ t ~ v => Some(Statement.InterfaceBody.Property(a, n, t, v))
 					}
 						|
-					lineComment ^^^ None
+					(lineComment | multilineComment) ^^^ None
 				).* <~ "@end"
 			) ^^ {
 				case n ~ p ~ b => Statement.Interface(n, p, b.flatten)
@@ -315,7 +315,7 @@ object Main extends App {
 						case k ~ t ~ Right(args) ~ b => Some(Statement.ImplementationBody.MultiMethod(k, t, args, b))
 					}
 						|
-					lineComment ^^^ None
+					(lineComment | multilineComment) ^^^ None
 				).* <~ "@end"
 			) ^^ {
 				case n ~ body => Statement.Implementation(n, body.flatten)
@@ -407,8 +407,11 @@ object Main extends App {
 		)
 
 		def lineComment: Parser[String] = "//[^\\n\\r]*".r
+		def multilineComment: Parser[String] = "(?ms)/\\*.*?\\*/".r
 		def program: Parser[List[Statement]] = (
 			lineComment ^^ {c => Expr.Raw(c + "\n")}
+				|||
+			multilineComment ^^ {c => Expr.Raw(c)}
 				|||
 			statement <~ ";".?
 		).*

@@ -51,10 +51,63 @@ var utf8_buf_alloc = $loader.loadprim("std@utf8_buf_alloc", 1),
 }
 
 {
-var unicode_lower = $loader.loadprim("std@unicode_lower", 2),
+var
+	unicode_buf_alloc = $loader.loadprim("std@unicode_buf_alloc", 2),
+	unicode_buf_add = $loader.loadprim("std@unicode_buf_add", 2),
+	unicode_buf_content = $loader.loadprim("std@unicode_buf_content", 1),
+	unicode_buf_length = $loader.loadprim("std@unicode_buf_length", 1),
+	unicode_buf_size = $loader.loadprim("std@unicode_buf_size", 1),
+
+	unicode_get = $loader.loadprim("std@unicode_get", 3),
+	unicode_validate = $loader.loadprim("std@unicode_validate", 2),
+	unicode_iter = $loader.loadprim("std@unicode_iter", 3),
+	unicode_length = $loader.loadprim("std@unicode_length", 2),
+	unicode_compare = $loader.loadprim("std@unicode_compare", 3),
+	unicode_sub = $loader.loadprim("std@unicode_sub", 4),
+
+	unicode_convert = $loader.loadprim("std@unicode_convert", 3),
+	unicode_lower = $loader.loadprim("std@unicode_lower", 2),
 	unicode_upper = $loader.loadprim("std@unicode_upper", 2)
 
 @implementation NL_unicode
+	+ ($tabstract(uni_buf)) buf_alloc:($tint)size enc:($tint)enc {
+		return unicode_buf_alloc(size, enc)
+	}
+	+ buf_add:($tabstract(uni_buf))buf char:($tint)char {
+		unicode_buf_add(buf, char)
+	}
+	+ ($tstring) buf_content:($tabstract(uni_buf))buf {
+		return unicode_buf_content(buf)
+	}
+	+ ($tint) buf_length:($tabstract(uni_buf))buf {
+		return unicode_buf_length(buf)
+	}
+	+ ($tint) buf_size:($tabstract(uni_buf))buf {
+		return unicode_buf_size(buf)
+	}
+	
+	+ ($tint) get:($tstring)str enc:($tint)enc index:($tint)index {
+		return unicode_get(str, enc, index)
+	}
+	+ ($tbool) validate:($tstring)str enc:($tint)enc {
+		return unicode_validate(str, enc)
+	}
+	+ iter:($tstring)str enc:($tint)enc with:(^($tint): _)func {
+		unicode_iter(str, enc, func)
+	}
+	+ ($tint) length:($tstring)str enc:($tint)enc {
+		return unicode_length(str, enc)
+	}
+	+ ($tint) compare:($tstring)str1 with:($tstring)str2 enc:($tint)enc {
+		return unicode_compare(str1, str2, enc)
+	}
+	+ ($tstring) sub:($tstring)str enc:($tint)enc pos:($tint)pos len:($tint)len {
+		return unicode_sub(str, enc, pos, len)
+	}
+	
+	+ ($tstring) convert:($tstring)str from_enc:($tint)from to_enc:($tint)to {
+		return unicode_convert(str, from, to)
+	}
 	+ ($tstring) lower:($tstring)str enc:($tint)enc {
 		return unicode_lower(str, enc)
 	}
@@ -438,9 +491,11 @@ var regexp_new = $loader.loadprim("regexp@regexp_new", 1),
 
 {
 var module_read = $loader.loadprim("std@module_read", 2),
+	module_read_string = $loader.loadprim("std@module_read_string", 2),
 	module_read_path = $loader.loadprim("std@module_read_path", 3),
 	module_exec = $loader.loadprim("std@module_exec", 1),
 	module_name = $loader.loadprim("std@module_name", 1),
+	module_set_name = $loader.loadprim("std@module_set_name", 2),
 	module_exports = $loader.loadprim("std@module_exports", 1),
 	module_loader = $loader.loadprim("std@module_loader", 1),
 	module_nglobals = $loader.loadprim("std@module_nglobals", 1),
@@ -452,6 +507,9 @@ var module_read = $loader.loadprim("std@module_read", 2),
 	+ ($tabstract(module)) read:(^($tstring, $tint, $tint): $tint)fn loader:($tobject)loader {
 		return module_read(fn, loader)
 	}
+	+ ($tabstract(module)) read_string:($tstring)str loader:($tobject)loader {
+		return module_read_string(str, loader)
+	}
 	+ ($tabstract(module)) read_path:($tarray($tstring))path name:($tstring)name loader:($tobject)loader {
 		return module_read_path(path, name, loader)
 	}
@@ -460,6 +518,9 @@ var module_read = $loader.loadprim("std@module_read", 2),
 	}
 	+ ($tstring) name:($tabstract(module))module {
 		return module_name(module)
+	}
+	+ set_name:($tabstract(module))module to:($tstring)name {
+		module_set_name(module, name)
 	}
 	+ ($tobject) exports:($tabstract(module))module {
 		return module_exports(module)
