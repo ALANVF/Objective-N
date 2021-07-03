@@ -204,6 +204,7 @@ package object Ast {
 				case Type.Func(None, ret) => "^(...): " + ret.toObjn
 				case Type.Func(Some(params), ret) => params.map(_.toObjn).mkString("^(", ", ", "): ") + ret.toObjn
 				case Type.Abstract(name) => "$tabstract("+name+')'
+				case Type.Checked(t) => t.toObjn()
 			}
 		}
 		object Type {
@@ -218,6 +219,7 @@ package object Ast {
 				def toNeko = "$tfunction"
 			}
 			case class Abstract(name: String)       extends Type { def toNeko = "$tabstract" }
+			case class Checked(t: Checker.Type)     extends Type { def toNeko = t.toNeko() }
 		}
 		
 		sealed trait NekoValue extends Expr
@@ -237,8 +239,8 @@ package object Ast {
 		
 		sealed trait ObjNValue extends Expr
 		object ObjNValue {
-			case object Nil                          extends ObjNValue { def toNeko(ctx: Context) = Message.send("ON_Nil", "make") }
-			case object Null                         extends ObjNValue { def toNeko(ctx: Context) = Message.send("ON_Null", "make") }
+			case object Nil                          extends ObjNValue { def toNeko(ctx: Context) = "nil" }
+			case object Null                         extends ObjNValue { def toNeko(ctx: Context) = "NULL" }
 			case class String(str: java.lang.String) extends ObjNValue { def toNeko(ctx: Context) = Message.send("ON_String", List(("stringWithNekoString", '"' + str + '"'))) }
 			case class Float(float: Double)          extends ObjNValue { def toNeko(ctx: Context) = Message.send("ON_Float", List(("floatWithNekoFloat", float.toString))) }
 			case class Int(int: scala.Int)           extends ObjNValue { def toNeko(ctx: Context) = Message.send("ON_Integer", List(("integerWithNekoInteger", int.toString))) }
@@ -295,6 +297,7 @@ package object Ast {
 				}
 		}
 		
+		// TODO: cache all selectors
 		sealed trait Selector extends Expr
 		object Selector {
 			case class Single(name: String) extends Selector {
@@ -458,7 +461,7 @@ package object Ast {
 							})
 							case None => stmt
 						},
-						Op.Infix(Paren(u), "||", NekoValue.Bool(true))
+						Block(u :: NekoValue.Bool(true) :: Nil)
 					)
 					case None => While(
 						cond match {
@@ -479,7 +482,7 @@ package object Ast {
 		}
 		
 		case class ForXInY(xIsNew: Boolean, x: String, y: Expr, stmt: Statement) extends Expr {
-			def toNeko(ctx: Context) = ctx.genSym {e =>
+			def toNeko(ctx: Context) = ctx.genSym { e =>
 				val newCtx = ctx.inner()
 				val yType = Checker.exprTyper.typeExprWith(newCtx, y)
 				val xType = Checker.elementType(yType)
@@ -491,19 +494,66 @@ package object Ast {
 					newCtx.set(x, xType)
 				}
 				
-				String.join("",
-					"{var ",
-					(if(xIsNew) s"$x," else ""),
-					s"$e=ON_MakeEnumerator(${y.toNeko(ctx)});\n",
-					s"while ($x=${Message.send(e, "nextValue")})!=${Message.send("ON_Nil", "make")} ",
-					stmt.toNeko(newCtx),
-					"}"
-				)
+				if(yType match {
+					case Checker.TUnion(types) => types.forall(_.isInstanceOf[Checker.TArray])
+					case Checker.TArray(_) => true
+					case _ => false
+				}) {
+					newCtx.genSym { sym =>
+						val (yDecl, yVar) = y match {
+							case Variable(_) => (None, y)
+							case _ => (Some(e), Variable(e))
+						}
+						val decl = Statement.VarDecl(
+							(sym, None, Some(NekoValue.Int(0))) :: (
+								yDecl match {
+									case Some(name) => List((name, None, Some(y)))
+									case None => Nil
+									
+								}
+							) ::: (
+								if(xIsNew)
+									List((x, Some(Expr.Type.Checked(xType)), None))
+								else
+									Nil
+							)
+						)
+						val loop = While(
+							Op.Infix(Variable(sym), "<", Call(Builtin("$asize"), List(yVar))),
+							{
+								val setVar = Op.Infix(
+									Variable(x),
+									"=",
+									GetIndex(
+										yVar,
+										Op.Infix(Variable(sym), "++=", NekoValue.Int(1))
+									)
+								)
+								
+								stmt match {
+									case Block(stmts) => Block(setVar :: stmts)
+									case _ => Block(setVar :: stmt :: Nil)
+								}
+							}
+						)
+						
+						Block(decl :: loop :: Nil).toNeko(newCtx)
+					}
+				} else {
+					String.join("",
+						"{var ",
+						(if(xIsNew) s"$x," else ""),
+						s"$e=ON_MakeEnumerator(${y.toNeko(ctx)});\n",
+						s"while ($x=${Message.send(e, "nextValue")})!=nil ",
+						stmt.toNeko(newCtx),
+						"}"
+					)
+				}
 			}
 		}
 		
 		case class ForXYInZ(xyAreNew: Boolean, x: String, y: String, z: Expr, stmt: Statement) extends Expr {
-			def toNeko(ctx: Context) = ctx.genSym {e =>
+			def toNeko(ctx: Context) = ctx.genSym { e =>
 				val newCtx = ctx.inner()
 				val zType = Checker.exprTyper.typeExprWith(newCtx, z)
 				val xType = Checker.indexType(zType)
@@ -519,14 +569,69 @@ package object Ast {
 					newCtx.set(y, yType)
 				}
 				
-				String.join("",
-					"{var ",
-					(if(xyAreNew) s"$x,$y," else ""),
-					s"$e=ON_MakeEnumerator2(${z.toNeko(ctx)});\n",
-					s"while {$y=${Message.send(e+"[1]", "nextValue")};$x=${Message.send(e+"[0]", "nextValue")}}!=${Message.send("ON_Nil", "make")} ",
-					stmt.toNeko(newCtx),
-					"}"
-				)
+				// TODO: add rule for plain objects
+				if(zType match {
+					case Checker.TUnion(types) => types.forall(_.isInstanceOf[Checker.TArray])
+					case Checker.TArray(_) => true
+					case _ => false
+				}) {
+					newCtx.genSym { sym =>
+						val (zDecl, zVar) = z match {
+							case Variable(_) => (None, z)
+							case _ => (Some(e), Variable(e))
+						}
+						val decl = Statement.VarDecl(
+							(sym, None, Some(NekoValue.Int(0))) :: (
+								zDecl match {
+									case Some(name) => List((name, None, Some(z)))
+									case None => Nil
+									
+								}
+							) ::: (
+								if(xyAreNew)
+									List(
+										(x, Some(Expr.Type.Checked(xType)), None),
+										(y, Some(Expr.Type.Checked(yType)), None)
+									)
+								else
+									Nil
+							)
+						)
+						val loop = While(
+							Op.Infix(Variable(sym), "<", Call(Builtin("$asize"), List(zVar))),
+							{
+								val setVar = Op.Infix(
+									Variable(y),
+									"=",
+									GetIndex(
+										zVar,
+										Op.Infix(
+											Variable(x),
+											"=",
+											Op.Infix(Variable(sym), "++=", NekoValue.Int(1))
+										)
+									)
+								)
+								
+								stmt match {
+									case Block(stmts) => Block(setVar :: stmts)
+									case _ => Block(setVar :: stmt :: Nil)
+								}
+							}
+						)
+						
+						Block(decl :: loop :: Nil).toNeko(newCtx)
+					}
+				} else {
+					String.join("",
+						"{var ",
+						(if(xyAreNew) s"$x,$y," else ""),
+						s"$e=ON_MakeEnumerator2(${z.toNeko(ctx)});\n",
+						s"while {$y=${Message.send(e+"[1]", "nextValue")};$x=${Message.send(e+"[0]", "nextValue")}}!=nil ",
+						stmt.toNeko(newCtx),
+						"}"
+					)
+				}
 			}
 		}
 		

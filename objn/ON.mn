@@ -1,25 +1,25 @@
 #import "../objn/nekolib.mn"
 #import "../objn/ON.hn"
 
-{var _ = [ON_Nil new]
+// kinda hacky
+`nil` = [ON_Nil new]
 @implementation ON_Nil
-	+ make {_} // small hack
+	+ make {`nil`}
 	- ON_String {@"nil"}
 	
 	- __bool {false}
 	- __string {"nil"}
 @end
-}
 
-{var _ = [ON_Null new]
+// also kinda hacky
+`NULL` = [ON_Null new]
 @implementation ON_Null
-	+ make {_} // small hack
+	+ make {`NULL`}
 	- ON_String {@"NULL"}
 	
 	- __bool {false}
 	- __string {"NULL"}
 @end
-}
 
 @implementation ON_Number
 	+ newWithValue:($tint | $tfloat)value {
@@ -1105,7 +1105,7 @@ function ON_MakeEnumerator($tarray | $tobject v) {
 function ON_MakeEnumerator2($tarray | $tobject v) {
 	switch $typeof(v) {
 		$tarray => @[
-			[[ON_MakeRange(0, $asize(v)-1) ON_Array] ON_Enumerator],
+			[[ON_MakeRange(0, $asize(v)) ON_Array] ON_Enumerator],
 			[[ON_Enumerator make] initWithValues:v]
 		]
 		$tobject =>

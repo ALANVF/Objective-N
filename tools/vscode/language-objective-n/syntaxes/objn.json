@@ -384,6 +384,25 @@
 							"include": "#invalid"
 						}
 					]
+				},
+				{
+					"begin": "`",
+					"beginCaptures": [
+						{
+							"name": "string.other.objn"
+						}
+					],
+					"end": "`",
+					"endCaptures": [
+						{
+							"name": "string.other.objn"
+						}
+					],
+					"patterns": [
+						{
+							"include": "source.neko"
+						}
+					]
 				}
 			]
 		},

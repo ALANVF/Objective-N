@@ -33,7 +33,10 @@
 			{
 				"language": "objn",
 				"scopeName": "source.objn",
-				"path": "./syntaxes/objn.json"
+				"path": "./syntaxes/objn.json",
+				"embeddedLanguages": {
+					"source.neko": "neko"
+				}
 			}
 		]
 	},

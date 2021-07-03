@@ -227,6 +227,8 @@ object Main extends App {
 			).* <~ "}") ^^ {
 				case e ~ b => Expr.Switch(e, b.flatten)
 			}
+		
+		def raw_expr: Parser[Expr] = "(?ms)`[^`]+`".r ^^ { code => Expr.Raw(code.init.tail) }
 
 		lazy val op10: PackratParser[Expr] = (
 			("this" ~ "->") ~> name ^^ Expr.GetMember.apply /* fix this eventually */
@@ -266,6 +268,8 @@ object Main extends App {
 			try_catch_expr
 				|
 			switch_expr
+				|
+			raw_expr
 				|
 			not(expr) ~> "(" ~> expr <~ ")" ^^ Expr.Paren.apply
 				|

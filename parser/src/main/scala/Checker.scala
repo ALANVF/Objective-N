@@ -25,6 +25,11 @@ object Checker {
 			case TUnion(types) => types.map(_.toObjn()).mkString(" | ")
 			case _ => this.name
 		}
+		def toNeko(): String = this match {
+			case TUnion(types) => types.map(_.toNeko()).mkString("$array(", ",", ")")
+			case TUnknown | TInvalid => ""
+			case _ => this.toObjn()
+		}
 	}
 	object Type {
 		def fromExprType(etype: Expr.Type): Type = etype match {
@@ -46,6 +51,7 @@ object Checker {
 			case Expr.Type.Array(t) => TArray(fromExprType(t))
 			case Expr.Type.Func(params, ret) => TFunction(params.map(_.map(fromExprType)), fromExprType(ret))
 			case Expr.Type.Abstract(name) => TAbstract(Some(name))
+			case Expr.Type.Checked(t) => t
 		}
 		
 		def reduce(typ: Type) = typ match {

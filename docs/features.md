@@ -6,8 +6,8 @@ Objective-N is 90% compatable with regular Neko code, so I'd recommend checking 
 The other 5% of Objective-N that is *not* compatable with Neko includes these things:
 - The `@` character is not allowed in identifiers.
 - Curly braces are mandatory for anonymous function bodies.
-- Multiline comments are not yet supported.
-- Some statements like `return` can't be used with `&&` or `||`.
+- Only basic comments are supported (meaning you can't embed them inside expressions and stuff).
+- Some statements like `return` can't be used in `&&` or `||`.
 
 
 # Objective-N features
@@ -100,6 +100,11 @@ Neko-style switches are still available.
 TODO.
 
 
+### Escaped code
+
+`` `...` `` can be used to write raw Neko code when it can't be written in Objective-N
+
+
 # Objective-N object-oriented features
 
 ### Objective-N literals
@@ -111,7 +116,7 @@ Will probably go into more detail on this later, but here's the gist of it:
 - `@{@"a": 1, @"b": @[]}`: `ON_Dictionary` literal.
 - `@(value)`: Boxing literal. Converts the Neko value `value` into an Objective-N value.
 - `nil`: `ON_Nil` literal.
-- `NULL`: `ON_Null` literal. No actual use other than to emulate Objective-C.
+- `NULL`: `ON_Null` literal. No actual use other than to emulate Objective-C and not mess up enumerators.
 
 ### Message calls
 They work the same way that they work in Objective-C.

@@ -18,3 +18,18 @@ for(var i = 0; i < 5; i += 1) {
 	if i == 3 continue
 	$print(i, "\n")
 }
+
+for(var v in $array(1, 2, 3, 4, 5)) {
+	if v == 3 continue
+	$print(v, "\n")
+}
+
+for(var i, v in $array(1, 2, 3, 4, 5)) {
+	if v == 3 continue
+	$print(i, ": ", v, "\n")
+}
+
+for(var i, v in [@[1, 2, 3, 4, 5] raw]) {
+	if v == 3 continue
+	$print(i, ": ", v, "\n")
+}
